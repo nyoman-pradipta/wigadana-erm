@@ -1,0 +1,80 @@
+<template>
+  <div>
+    <div class="page-head">
+      <h1>Data Pasien</h1>
+      <router-link to="/pasien/baru" class="btn" v-if="canTambah">+ Pasien Baru</router-link>
+    </div>
+
+    <div class="card">
+      <div class="search-row">
+        <input v-model="q" placeholder="Cari nama atau nomor RM..." @keyup.enter="muat" />
+        <button class="btn secondary" @click="muat">Cari</button>
+      </div>
+
+      <table v-if="pasien.length">
+        <thead>
+          <tr>
+            <th>No. RM</th>
+            <th>Nama</th>
+            <th>No. HP</th>
+            <th>Identitas</th>
+            <th>Alergi</th>
+            <th style="text-align: right">Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="p in pasien" :key="p.id">
+            <td style="font-weight: 600">{{ p.no_rm }}</td>
+            <td>{{ p.nama }}</td>
+            <td>{{ p.no_hp || '—' }}</td>
+            <td class="muted" style="font-size: 12px">
+              {{ p.jenis_identitas }} {{ p.no_identitas || '' }}
+            </td>
+            <td>{{ p.riwayat_alergi || '—' }}</td>
+            <td>
+              <div class="row-actions" style="justify-content: flex-end">
+                <router-link :to="`/pasien/${p.id}`" class="btn small secondary">Riwayat</router-link>
+                <router-link :to="`/pasien/${p.id}/edit`" class="btn small secondary" v-if="canTambah">Edit</router-link>
+                <button v-if="canDaftar" class="btn small" @click="daftarAntrian(p)">+ Antrian</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div v-else class="empty">Belum ada data pasien</div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { computed, onMounted, ref } from 'vue'
+import api, { apiErrorMessage } from '../api/client'
+import { useAuthStore } from '../stores/auth'
+
+const auth = useAuthStore()
+const pasien = ref([])
+const q = ref('')
+
+const canTambah = computed(() => ['admin', 'dokter'].includes(auth.role))
+const canDaftar = computed(() => ['admin', 'dokter'].includes(auth.role))
+
+async function muat() {
+  try {
+    const { data } = await api.get('/patients', { params: { q: q.value } })
+    pasien.value = data
+  } catch (err) {
+    alert(apiErrorMessage(err, 'Gagal memuat pasien'))
+  }
+}
+
+async function daftarAntrian(p) {
+  try {
+    const { data } = await api.post('/antrian', { patient_id: p.id })
+    alert(`${p.nama} dapat nomor antrian ${data.antrian_no}`)
+  } catch (err) {
+    alert(apiErrorMessage(err, 'Gagal daftar antrian'))
+  }
+}
+
+onMounted(muat)
+</script>

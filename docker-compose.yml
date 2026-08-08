@@ -1,0 +1,55 @@
+# Deploy di VPS: PostgreSQL + Redis + Backend API
+# Jalankan: docker compose up -d --build
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: erm-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: erm
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-erm_password}
+      POSTGRES_DB: erm
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U erm"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: erm-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: erm-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://erm:${DB_PASSWORD:-erm_password}@db:5432/erm
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-ganti-secret-key-ini}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://erm-frontend.vercel.app}
+      CLINIC_NAME: ${CLINIC_NAME:-Klinik Sehat}
+      CLINIC_ADDRESS: ${CLINIC_ADDRESS:-}
+      CLINIC_PHONE: ${CLINIC_PHONE:-}
+    ports:
+      - "8000:8000"
+
+volumes:
+  pgdata:
+  redisdata:

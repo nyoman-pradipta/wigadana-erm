@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alur Operasional ERM Klinik — Panduan Staf</title>
+<style>
+  :root {
+    --ink: #0f172a;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --accent: #0284c7;
+    /* warna status = warna asli badge aplikasi (frontend/src/assets/main.css) */
+    --st-menunggu-bg: #fef3c7;  --st-menunggu-tx: #92400e;
+    --st-dipanggil-bg: #dbeafe; --st-dipanggil-tx: #1d4ed8;
+    --st-diperiksa-bg: #ede9fe; --st-diperiksa-tx: #5b21b6;
+    --st-selesai-bg: #dcfce7;   --st-selesai-tx: #166534;
+    --st-batal-bg: #fee2e2;     --st-batal-tx: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    margin: 0;
+    padding: 24px 32px 64px;
+    line-height: 1.45;
+  }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 40px 0 4px; display: flex; align-items: center; gap: 10px; }
+  h3 { font-size: 15px; margin: 0 0 6px; }
+  .subtitle { color: var(--muted); margin: 0 0 20px; font-size: 14px; }
+  .toolbar {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    position: sticky; top: 0; z-index: 10; box-shadow: 0 1px 4px rgba(15,23,42,.06);
+  }
+  .toolbar strong { font-size: 13px; color: var(--muted); margin-right: 4px; }
+  .btn {
+    padding: 8px 14px; border: 1px solid var(--border); background: #fff; color: var(--ink);
+    border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.print { background: #166534; border-color: #166534; color: #fff; }
+
+  /* ---- legenda status ---- */
+  .legend { display: flex; gap: 10px; flex-wrap: wrap; margin: 16px 0 8px; }
+  .legend .item {
+    display: flex; align-items: center; gap: 8px; background: var(--card);
+    border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px;
+  }
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 700; white-space: nowrap;
+  }
+  .badge.menunggu   { background: var(--st-menunggu-bg);   color: var(--st-menunggu-tx); }
+  .badge.dipanggil  { background: var(--st-dipanggil-bg);  color: var(--st-dipanggil-tx); }
+  .badge.diperiksa  { background: var(--st-diperiksa-bg);  color: var(--st-diperiksa-tx); }
+  .badge.selesai    { background: var(--st-selesai-bg);    color: var(--st-selesai-tx); }
+  .badge.batal      { background: var(--st-batal-bg);      color: var(--st-batal-tx); }
+
+  /* ---- swimlane ---- */
+  .lane {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    display: flex; margin-top: 14px; overflow-x: auto; transition: opacity .25s;
+  }
+  .lane.dimmed { opacity: .18; }
+  .lane-header {
+    width: 150px; min-width: 150px; background: #f1f5f9; border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 12px; font-weight: 700; font-size: 14px; gap: 4px;
+  }
+  .lane-header small { font-weight: 400; font-size: 11px; color: var(--muted); }
+  .lane.pendaftaran .lane-header { background: #ecfdf5; color: #065f46; }
+  .lane.dokter .lane-header { background: #e0f2fe; color: #075985; }
+  .lane.sistem .lane-header { background: #f8fafc; color: var(--muted); font-style: italic; }
+  .steps { display: flex; padding: 16px; gap: 14px; align-items: flex-start; flex-wrap: nowrap; }
+  .step {
+    width: 215px; min-width: 215px; border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px; background: #fff; position: relative;
+  }
+  .lane.dokter .step { border: 1.5px solid #7dd3fc; }
+  .step .num {
+    position: absolute; top: -11px; left: 12px; background: var(--accent); color: #fff;
+    font-size: 11px; font-weight: 800; padding: 2px 10px; border-radius: 999px;
+  }
+  .lane.dokter .step .num { background: #075985; }
+  .step .who { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: var(--accent); }
+  .lane.dokter .step .who { color: #075985; }
+  .step p { font-size: 12.5px; margin: 6px 0 0; color: #334155; }
+  .action {
+    display: inline-block; margin-top: 8px; font-size: 11.5px; font-weight: 700;
+    background: #fffbeb; border: 1px dashed #f59e0b; color: #92400e;
+    padding: 4px 8px; border-radius: 6px;
+  }
+  .action.blue  { background: #eff6ff; border-color: #3b82f6; color: #1d4ed8; }
+  .action.green { background: #f0fdf4; border-color: #22c55e; color: #166534; }
+  .action.red   { background: #fef2f2; border-color: #ef4444; color: #b91c1c; }
+  .decision {
+    width: 215px; min-width: 215px; transform: rotate(0deg);
+  }
+  .diamond {
+    width: 215px; background: #fff; border: 2px solid #94a3b8; border-radius: 10px;
+    padding: 14px 12px; text-align: center; font-size: 12.5px; font-weight: 700; color: #334155;
+    position: relative;
+  }
+  .diamond .q { font-size: 20px; display: block; margin-bottom: 4px; }
+  .arrow { width: 40px; min-width: 40px; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 20px; }
+  .arrow span { transform: rotate(0deg); }
+
+  /* ---- state machine ---- */
+  .states { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .states .node {
+    padding: 10px 16px; border-radius: 10px; font-weight: 700; font-size: 13px; border: 1px solid var(--border);
+  }
+  .states .trans { color: #94a3b8; font-size: 13px; font-weight: 600; }
+  .states .dead { background: #f8fafc; color: var(--muted); font-style: italic; border-style: dashed; }
+
+  /* ---- FAQ ---- */
+  .faq { margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+  .faq .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .faq .card h4 { margin: 0 0 6px; font-size: 13.5px; }
+  .faq .card p { margin: 0; font-size: 12.5px; color: #334155; }
+  .faq .card strong { color: var(--ink); }
+  .footer { margin-top: 48px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
+
+  .note {
+    background: #fffbeb; border: 1px solid #fde68a; color: #78350f;
+    border-radius: 10px; padding: 12px 16px; font-size: 13px; margin-top: 14px;
+  }
+
+  /* ---- print: A4 landscape ---- */
+  @media print {
+    body { background: #fff; padding: 0; }
+    .toolbar, .btn { display: none !important; }
+    .lane { break-inside: avoid; }
+    .step, .diamond { break-inside: avoid; }
+    .faq { grid-template-columns: 1fr 1fr; }
+    @page { size: A4 landscape; margin: 12mm; }
+    h2 { margin-top: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <strong>Filter tampilan:</strong>
+  <button class="btn active" onclick="filterRole('all')">👥 Semua Role</button>
+  <button class="btn" onclick="filterRole('pendaftaran')">🩺 Fokus Pendaftaran</button>
+  <button class="btn" onclick="filterRole('dokter')">🩺 Fokus Dokter</button>
+  <button class="btn" onclick="filterRole('admin')">⚙️ Admin</button>
+  <span style="flex:1"></span>
+  <button class="btn print" onclick="window.print()">🖨️ Cetak / Simpan PDF (A4)</button>
+</div>
+
+<h1>🏥 Alur Operasional ERM Klinik</h1>
+<p class="subtitle">Panduan ringkas untuk staf klinik — ikuti nomor langkah sesuai peran kamu. Warna status di diagram <b>sama persis</b> dengan yang muncul di aplikasi.</p>
+
+<div class="legend">
+  <span class="item"><span class="badge menunggu">menunggu</span> Pasien antre, belum dipanggil</span>
+  <span class="item"><span class="badge dipanggil">dipanggil</span> Nomor dipanggil, arahkan ke dokter</span>
+  <span class="item"><span class="badge diperiksa">diperiksa</span> Sedang diisi dokter (draft)</span>
+  <span class="item"><span class="badge selesai">selesai</span> Pemeriksaan lengkap, masuk riwayat</span>
+  <span class="item"><span class="badge batal">batal</span> Pasien tidak jadi / dibatalkan</span>
+</div>
+
+<!-- ================= PENDAFTARAN & PANGGILAN (DOKTER) ================= -->
+<h2>1️⃣ Alur Pendaftaran &amp; Panggilan — dilakukan Dokter</h2>
+<div class="lane pendaftaran" data-role="pendaftaran">
+  <div class="lane-header">PENDAFTARAN &amp; PANGGILAN<small>dilakukan dokter</small></div>
+  <div class="steps">
+    <div class="step"><span class="num">1</span><span class="who">Dokter</span>
+      <h3>Login aplikasi</h3>
+      <p>Buka alamat ERM, masuk pakai username &amp; password akun dokter.</p>
+    </div>
+    <div class="arrow"><span>➜</span></div>
+    <div class="decision"><div class="diamond"><span class="q">❓</span>Pasien sudah pernah<br>berobat di klinik?</div></div>
+    <div class="arrow"><span>➜</span></div>
+    <div class="step"><span class="num">2a</span><span class="who">Dokter</span>
+      <h3>Pasien baru — daftarkan</h3>
+      <p>Klik tombol <b>+ Pasien Baru</b>, isi form.</p>
+      <span class="action">Wajib diisi: Nama saja</span>
+      <p style="margin-top:6px">Sistem otomatis membuat <b>No. RM</b> (contoh RM-000001).</p>
+    </div>
+    <div class="arrow"><span>➜</span></div>
+    <div class="step"><span class="num">2b</span><span class="who">Dokter</span>
+      <h3>Pasien lama — cari dulu</h3>
+      <p>Gunakan menu <b>Cari Pasien</b>, cari nama atau No. RM.</p>
+    </div>
+    <div class="arrow"><span>➜</span></div>
+    <div class="step"><span class="num">3</span><span class="who">Dokter</span>
+      <h3>Buat antrian</h3>
+      <p>Klik tombol <b>+ Antrian</b> pada pasien.</p>
+      <span class="action blue">Klik tombol [ + Antrian ]</span>
+      <p style="margin-top:6px">Sistem memberi <b>nomor antrian</b> otomatis (reset tiap hari).</p>
+    </div>
+    <div class="arrow"><span>➜</span></div>
+    <div class="step"><span class="num">4</span><span class="who">Sistem</span>
+      <h3>Status: menunggu</h3>
+      <p>Pasien masuk daftar <b>Antrian Hari Ini</b> dengan status <span class="badge menunggu">menunggu</span>.</p>
+    </div>
+    <div class="arrow"><span>➜</span></div>
+    <div class="step"><span class="num">5</span><span class="who">Dokter</span>
+      <h3>Panggil pasien</h3>
+      <p>Klik tombol <b>📢 Panggil</b> saat gilirannya.</p>
+      <span class="action blue">Klik tombol [ 📢 Panggil ]</span>
+      <p style="margin-top:6px">Nomor tampil di banner <b>"Sedang Dipanggil"</b>. Arahkan pasien ke ruang dokter.</p>
+    </div>
+    <div class="arrow"><span>➜</span></div>
+    <div class="step"><span class="num">6</span><span class="who">Sistem</span>
+      <h3>Status: dipanggil</h3>
+      <p>Status berubah <span class="badge dipanggil">dipanggil</span>. Dokter bisa mulai memeriksa.</p>
+    </div>
+    <div class="arrow"><span>➜</span></div>
+    <div class="step"><span class="num">7</span><span class="who">Dokter</span>
+      <h3>Draft? Panggil ulang</h3>
+      <p>Kalau dokter menyimpan belum lengkap (status <span class="badge diperiksa">diperiksa</span>), klik <b>📢 Panggil Ulang</b> untuk memanggil pasien kembali.</p>
+    </div>
+    <div class="arrow"><span>➜</span></div>
+    <div class="step"><span class="num">8</span><span class="who">Dokter</span>
+      <h3>Pasien tidak hadir? Batalkan</h3>
+      <p>Klik <b>✕ Batal</b> — antrian berhenti (final, tidak bisa dipanggil lagi; daftar ulang dari nol jika perlu).</p>
+      <span class="action red">Klik tombol [ ✕ Batal ]</span>
+    </div>
+  </div>
+</div>
+<div class="note">ℹ️ <b>Catatan:</b> pasien yang masih punya antrian aktif (menunggu/dipanggil/diperiksa) <b>tidak bisa</b> didaftarkan ulang — sistem menolak dan menampilkan nomor antrian lamanya.</div>
+
+<!-- ================= DOKTER ================= -->
+<h2>2️⃣ Alur Dokter — Periksa, Simpan, Cetak</h2>
+<div class="lane dokter" data-role="dokter">
+  <div class="lane-header">DOKTER<small>pemeriksaan pasien</small></div>
+  <div class="steps">
+    <div class="step"><span class="num">1</span><span class="who">Dokter</span>
+      <h3>Login aplikasi</h3>
+      <p>Masuk pakai akun dokter. Halaman utama menampilkan antrian hari ini.</p>
+    </div>
+    <div class="arrow"><span>➜</span></div>
+    <div class="step"><span class="num">2</span><span class="who">Dokter</span>
+      <h3>Pilih pasien</h3>
+      <p>Klik tombol <b>✍️ Periksa</b> pada pasien berstatus <span class="badge dipanggil">dipanggil</span> (atau <span class="badge diperiksa">diperiksa</span> untuk melanjutkan draft).</p>
+      <span class="action blue">Klik tombol [ ✍️ Periksa ]</span>
+    </div>
+    <div class="arrow"><span>➜</span></div>
+    <div class="step"><span class="num">3</span><span class="who">Dokter</span>
+      <h3>Isi pemeriksaan</h3>
+      <p>Anamnesa, tanda vital (TB, BB, TD, suhu, HR, RR), pemeriksaan fisik — <b>semua boleh kosong</b>.</p>
+    </div>
+    <div class="arrow"><span>➜</span></div>
+    <div class="step"><span class="num">4</span><span class="who">Dokter</span>
+      <h3>Isi Diagnosa &amp; Terapi</h3>
+      <p>Kunci utama alur: isi <b>Diagnosa</b> dan <b>Terapi</b>.</p>
+      <span class="action">Ingat: ini penentu status selesai</span>
+    </div>
+    <div class="arrow"><span>➜</span></div>
+    <div class="step"><span class="num">5</span><span class="who">Dokter</span>
+      <h3>Simpan pemeriksaan</h3>
+      <p>Klik <b>Simpan Pemeriksaan</b>.</p>
+      <span class="action green">Klik tombol [ Simpan Pemeriksaan ]</span>
+    </div>
+    <div class="arrow"><span>➜</span></div>
+    <div class="decision"><div class="diamond"><span class="q">❓</span>Diagnosa <b>dan</b> Terapi<br>keduanya sudah terisi?</div></div>
+    <div class="arrow"><span>➜</span></div>
+    <div class="step"><span class="num">6a</span><span class="who">Dokter</span>
+      <h3>Belum lengkap → draft</h3>
+      <p>Status <span class="badge diperiksa">diperiksa</span>. Belum masuk riwayat. Bisa dilanjut kapan saja (dokter panggil ulang).</p>
+    </div>
+    <div class="arrow"><span>➜</span></div>
+    <div class="step"><span class="num">6b</span><span class="who">Dokter</span>
+      <h3>Lengkap → selesai ✅</h3>
+      <p>Status <span class="badge selesai">selesai</span>, langsung masuk <b>Riwayat Pasien</b>.</p>
+    </div>
+    <div class="arrow"><span>➜</span></div>
+    <div class="step"><span class="num">7</span><span class="who">Dokter</span>
+      <h3>Cetak PDF</h3>
+      <p><b>🖨️ Rekam Medis</b> — selalu tersedia (walau draft).<br>
+      <b>🖨️ Resep</b> — aktif kalau kolom <b>Terapi</b> sudah tersimpan.</p>
+      <span class="action green">Klik tombol [ 🖨️ Rekam Medis ] / [ 🖨️ Resep ]</span>
+    </div>
+    <div class="arrow"><span>➜</span></div>
+    <div class="step"><span class="num">8</span><span class="who">Dokter</span>
+      <h3>Lihat riwayat pasien</h3>
+      <p>Menu <b>Riwayat Pasien</b> menampilkan semua kunjungan <span class="badge selesai">selesai</span> pasien — lengkap dengan dokter yang menangani. Bisa cetak ulang PDF kapan saja.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ================= ADMIN ================= -->
+<h2>3️⃣ Alur Admin — Kelola Akun &amp; Statistik</h2>
+<div class="lane" data-role="admin">
+  <div class="lane-header">ADMIN<small>kelola sistem</small></div>
+  <div class="steps">
+    <div class="step"><span class="num">1</span><span class="who">Admin</span>
+      <h3>Kelola akun staf</h3>
+      <p>Menu <b>Pengguna</b>: tambah akun dokter, reset password, aktif/nonaktifkan akun.</p>
+    </div>
+    <div class="arrow"><span>➜</span></div>
+    <div class="step"><span class="num">2</span><span class="who">Admin</span>
+      <h3>Statistik</h3>
+      <p>Menu <b>Statistik</b>: total kunjungan, grafik 7 hari, 10 diagnosa terbanyak, 5 dokter teraktif. Data bisa tertunda sampai 5 menit.</p>
+    </div>
+    <div class="arrow"><span>➜</span></div>
+    <div class="step"><span class="num">3</span><span class="who">Admin</span>
+      <h3>Bisa semua peran</h3>
+      <p>Admin bisa menjalankan semua fungsi dokter (daftar pasien, antrian, periksa, riwayat).</p>
+    </div>
+  </div>
+</div>
+
+<!-- ================= STATE MACHINE ================= -->
+<h2>4️⃣ Peta Status Antrian (ringkas)</h2>
+<div class="states">
+  <span class="node" style="background:var(--st-menunggu-bg); color:var(--st-menunggu-tx)">menunggu</span>
+  <span class="trans">📢 dipanggil dokter ➜</span>
+  <span class="node" style="background:var(--st-dipanggil-bg); color:var(--st-dipanggil-tx)">dipanggil</span>
+  <span class="trans">✍️ disimpan dokter ➜</span>
+  <span class="node" style="background:var(--st-diperiksa-bg); color:var(--st-diperiksa-tx)">diperiksa (draft)</span>
+  <span class="trans">diagnosa+terapi lengkap ➜</span>
+  <span class="node" style="background:var(--st-selesai-bg); color:var(--st-selesai-tx)">selesai ✅</span>
+  <span class="trans">· · ·</span>
+  <span class="node dead">batal ❌ (dari menunggu / dipanggil / diperiksa)</span>
+</div>
+<div class="note">🔄 <b>Panggil Ulang:</b> dari <span class="badge diperiksa">diperiksa</span> bisa kembali ke <span class="badge dipanggil">dipanggil</span> (draft ditinggalkan, pasien dipanggil lagi). Status <b>selesai</b> dan <b>batal</b> adalah akhir — tidak ada perubahan status lagi.</div>
+
+<!-- ================= FAQ ================= -->
+<h2>5️⃣ Hal yang Sering Membingungkan</h2>
+<div class="faq">
+  <div class="card"><h4>❓ Draft vs Selesai, apa bedanya?</h4>
+    <p>Status <strong>selesai</strong> tercapai hanya kalau kolom <strong>Diagnosa DAN Terapi</strong> keduanya terisi. Kalau salah satu masih kosong, status jadi <strong>diperiksa (draft)</strong> — wajar, misal menunggu hasil lab. Draft belum masuk riwayat.</p></div>
+  <div class="card"><h4>❓ Draft itu error?</h4>
+    <p><strong>Bukan.</strong> Draft dirancang untuk kasus pemeriksaan belum lengkap. Pasien tetap ada di daftar antrian dan bisa dipanggil ulang.</p></div>
+  <div class="card"><h4>❓ Kenapa pasien tidak muncul di Riwayat?</h4>
+    <p>Riwayat pasien hanya menampilkan kunjungan berstatus <strong>selesai</strong>. Kunjungan draft tidak muncul sampai dilengkapi diagnosa + terapi.</p></div>
+  <div class="card"><h4>❓ Cetak Resep beda syarat dengan Selesai?</h4>
+    <p>Ya. Tombol <strong>Resep</strong> aktif cukup kalau kolom <strong>Terapi</strong> sudah tersimpan (boleh masih draft). Tombol <strong>Rekam Medis</strong> selalu tersedia.</p></div>
+  <div class="card"><h4>❓ Bisa daftar antrian dobel?</h4>
+    <p>Tidak. Pasien yang masih punya antrian aktif (menunggu/dipanggil/diperiksa) ditolak sistem. Harus <strong>selesai</strong> atau <strong>batal</strong> dulu.</p></div>
+  <div class="card"><h4>❓ No. RM dan No. Antrian diisi manual?</h4>
+    <p>Tidak pernah. <strong>No. RM</strong> dibuat otomatis saat pasien pertama daftar (permanen). <strong>No. Antrian</strong> otomatis berurutan dan reset tiap hari.</p></div>
+</div>
+
+<div class="footer">ERM Klinik — Panduan Operasional Staf · Dokumen ini dihasilkan dari kode aplikasi (akurat per versi saat ini) · Untuk pertanyaan teknis hubungi pengembang.</div>
+
+<script>
+function filterRole(role) {
+  document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  const pendaLane = document.querySelector('.lane.pendaftaran');
+  const dokterLane = document.querySelector('.lane.dokter');
+  const adminLane = document.querySelector('[data-role="admin"]');
+  const dim = (el, on) => { if (el) el.classList.toggle('dimmed', !on); };
+  if (role === 'all') {
+    dim(pendaLane, true); dim(dokterLane, true); dim(adminLane, true);
+  } else if (role === 'pendaftaran') {
+    dim(pendaLane, true); dim(dokterLane, false); dim(adminLane, false);
+  } else if (role === 'dokter') {
+    // dokter melakukan pendaftaran+panggilan DAN pemeriksaan
+    dim(pendaLane, true); dim(dokterLane, true); dim(adminLane, false);
+  } else if (role === 'admin') {
+    dim(pendaLane, true); dim(dokterLane, true); dim(adminLane, true);
+  }
+}
+</script>
+</body>
+</html>
