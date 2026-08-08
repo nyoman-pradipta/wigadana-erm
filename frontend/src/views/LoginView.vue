@@ -19,10 +19,6 @@
           {{ loading ? 'Masuk...' : 'Masuk' }}
         </button>
       </form>
-
-      <p class="muted" style="margin-top: 14px; font-size: 12px; text-align: center">
-        Demo: admin/123456 · wigadana/123456
-      </p>
     </div>
   </div>
 </template>
