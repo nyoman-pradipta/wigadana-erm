@@ -19,7 +19,7 @@ Alur sesuai diagram: **pasien daftar → dapat nomor antrian → dokter panggil 
 ```
 
 - **Frontend** — Vue 3 + Vite + Pinia + Vue Router + Axios → deploy di **Vercel** (static).
-- **Backend** — FastAPI + SQLAlchemy + JWT auth → deploy di **VPS** (Docker).
+- **Backend** — FastAPI + SQLAlchemy + JWT auth → deploy di **VPS** (systemd + venv Python 3.11, nginx reverse proxy, PostgreSQL + Redis).
 - **Cache** — Redis: cache daftar antrian (TTL 30s), cache riwayat pasien (TTL 60s), counter nomor antrian harian. **Kalau Redis mati, aplikasi tetap jalan** (fallback ke DB, cache off).
 - **DB** — PostgreSQL. Tabel: `users`, `patients`, `visits`.
 
@@ -100,23 +100,22 @@ npm run dev
 ## Deploy ke VPS (Backend + DB + Redis)
 
 ```bash
-# di VPS:
-git clone <repo> && cd wigadana-erm
-# buat .env (DB_PASSWORD, SECRET_KEY, CORS_ORIGINS) lalu:
-docker compose up -d --build
-# cek: curl http://VPS_IP:8000/api/health → {"status":"ok","redis":true}
+# di VPS (Debian 11; butuh Python 3.10+ — install 3.11 dari source kalau perlu):
+git clone https://github.com/nyoman-pradipta/wigadana-erm.git /opt/erm
+cd /opt/erm/backend
+python3.11 -m venv .venv && .venv/bin/pip install -r requirements.txt
+# buat .env (DATABASE_URL postgresql+psycopg://..., REDIS_URL, SECRET_KEY >= 32 char,
+#   CORS_ORIGINS=https://wigadana-erm.vercel.app, SEED_ADMIN_PASSWORD, SEED_DOKTER_PASSWORD)
+# systemd unit: uvicorn app.main:app --host 127.0.0.1 --port 8000 (1 worker)
+# nginx: reverse proxy 80 -> 127.0.0.1:8000
+# HTTPS tanpa domain: cloudflared tunnel --url http://127.0.0.1:8000 (URL trycloudflare acak)
+systemctl restart erm
+# cek: curl http://VPS_IP/api/health → {"status":"ok","redis":true}
 ```
 
-**Opsional — pasang reverse proxy (Caddy/Nginx) + domain + HTTPS:**
-
-```
-Caddyfile:
-api.klinikmu.com {
-    reverse_proxy localhost:8000
-}
-```
-
-Buka port 8000 di firewall (atau 443 via Caddy). Jangan lupa set `CORS_ORIGINS` ke domain Vercel frontend.
+**Auto-deploy:** push ke `main` (hanya file `backend/**` / `requirements.txt`) → GitHub Actions
+(`.github/workflows/deploy-backend.yml`) SSH ke VPS → `git pull` + `pip install` + `systemctl restart erm`.
+Secret yang dibutuhkan: `ERM_SSH_KEY` (private key deploy, public-nya di `authorized_keys` VPS).
 
 ## Deploy ke Vercel (Frontend)
 
