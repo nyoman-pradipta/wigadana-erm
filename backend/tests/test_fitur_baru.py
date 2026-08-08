@@ -295,3 +295,65 @@ def test_admin_hapus_pasien(client, dokter_token):
     client.post(f"/api/antrian/{v['id']}/panggil", headers=h)
     client.put(f"/api/visits/{v['id']}", headers=h, json={"anamnesa": "Cek", "diagnosa": "Sehat"})
     assert client.delete(f"/api/patients/{p2['id']}", headers=ha).status_code == 409
+
+
+# ===== Fitur revisi: edit riwayat (dokter penanggung jawab atau admin) =====
+def test_edit_riwayat_dokter_penanggung_jawab_atau_admin(client, dokter_token):
+    h = auth(dokter_token)
+    ha = auth(login_admin(client))
+
+    p = client.post("/api/patients", headers=h, json={"nama": "Pasien Edit Riwayat"}).json()
+    v = client.post("/api/antrian", headers=h, json={"patient_id": p["id"]}).json()
+    client.post(f"/api/antrian/{v['id']}/panggil", headers=h)
+    r = client.put(f"/api/visits/{v['id']}", headers=h, json={"anamnesa": "Batuk", "diagnosa": "ISPA", "terapi": "Obat A"})
+    assert r.status_code == 200
+    assert r.json()["doctor_id"] is not None
+
+    # dokter lain (bukan penanggung jawab) -> 403
+    r = client.post("/api/users", headers=ha, json={
+        "username": "dr.lain", "password": "rahasia123", "nama": "Dr. Lain", "role": "dokter",
+    })
+    uid_lain = r.json()["id"]
+    tok_lain = client.post("/api/auth/login", json={"username": "dr.lain", "password": "rahasia123"}).json()["access_token"]
+    h_lain = auth(tok_lain)
+    r = client.put(f"/api/visits/{v['id']}", headers=h_lain, json={"diagnosa": "Diubah dokter lain"})
+    assert r.status_code == 403
+
+    # dokter penanggung jawab sendiri -> boleh edit
+    r = client.put(f"/api/visits/{v['id']}", headers=h, json={"diagnosa": "ISPA revisi"})
+    assert r.status_code == 200
+    assert r.json()["diagnosa"] == "ISPA revisi"
+
+    # admin -> boleh edit siapapun punya visit-nya
+    r = client.put(f"/api/visits/{v['id']}", headers=ha, json={"diagnosa": "ISPA edit admin"})
+    assert r.status_code == 200
+    assert r.json()["diagnosa"] == "ISPA edit admin"
+
+    client.delete(f"/api/users/{uid_lain}", headers=ha)
+
+
+# ===== Fitur revisi: hapus riwayat (admin only) =====
+def test_hapus_riwayat_admin_only(client, dokter_token):
+    h = auth(dokter_token)
+    ha = auth(login_admin(client))
+
+    p = client.post("/api/patients", headers=h, json={"nama": "Pasien Hapus Riwayat"}).json()
+    v = client.post("/api/antrian", headers=h, json={"patient_id": p["id"]}).json()
+    client.post(f"/api/antrian/{v['id']}/panggil", headers=h)
+    client.put(f"/api/visits/{v['id']}", headers=h, json={"anamnesa": "Cek", "diagnosa": "Sehat", "terapi": "-"})
+
+    # dokter (non-admin) tidak boleh hapus -> 403
+    assert client.delete(f"/api/visits/{v['id']}", headers=h).status_code == 403
+
+    # riwayat masih muncul sebelum dihapus
+    r = client.get(f"/api/visits/riwayat/{p['id']}", headers=h)
+    assert len(r.json()) == 1
+
+    # admin boleh hapus
+    assert client.delete(f"/api/visits/{v['id']}", headers=ha).status_code == 204
+    assert client.get(f"/api/visits/{v['id']}", headers=ha).status_code == 404
+    assert client.delete(f"/api/visits/{v['id']}", headers=ha).status_code == 404  # sudah hilang
+
+    # riwayat pasien sudah kosong (cache ter-invalidate)
+    r = client.get(f"/api/visits/riwayat/{p['id']}", headers=h)
+    assert len(r.json()) == 0

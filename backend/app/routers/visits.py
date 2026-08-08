@@ -142,6 +142,12 @@ def isi_pemeriksaan(
     if visit is None:
         raise HTTPException(status_code=404, detail="Pemeriksaan tidak ditemukan")
 
+    if dokter.role != "admin" and visit.doctor_id is not None and visit.doctor_id != dokter.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Hanya dokter yang menangani pemeriksaan ini atau admin yang boleh mengedit.",
+        )
+
     data = body.model_dump(exclude_unset=True)
     for field, value in data.items():
         setattr(visit, field, value)
@@ -159,3 +165,21 @@ def isi_pemeriksaan(
     cache_delete_prefix("antrian:")  # status berubah -> daftar antrian tidak boleh stale
     cache_delete("stats:overview")  # kunjungan bertambah
     return visit
+
+
+@router.delete("/{visit_id}", status_code=204)
+def hapus_visit(
+    visit_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles("admin")),
+):
+    """Hapus 1 riwayat pemeriksaan (visit) permanen — admin only."""
+    visit = db.get(Visit, visit_id)
+    if visit is None:
+        raise HTTPException(status_code=404, detail="Pemeriksaan tidak ditemukan")
+    patient_id = visit.patient_id
+    db.delete(visit)
+    db.commit()
+    cache_delete(_riwayat_cache_key(patient_id))
+    cache_delete_prefix("antrian:")
+    cache_delete("stats:overview")

@@ -38,7 +38,7 @@
             <th>Dokter</th>
             <th>Diagnosa</th>
             <th>Terapi</th>
-            <th></th>
+            <th style="text-align: right">Aksi</th>
           </tr>
         </thead>
         <tbody>
@@ -48,9 +48,13 @@
             <td>{{ v.diagnosa || '—' }}</td>
             <td>{{ v.terapi || '—' }}</td>
             <td>
-              <button class="btn small secondary" @click="toggle(v.id)">
-                {{ expanded === v.id ? 'Tutup' : 'Detail' }}
-              </button>
+              <div class="row-actions" style="justify-content: flex-end">
+                <button class="btn small secondary" @click="toggle(v.id)">
+                  {{ expanded === v.id ? 'Tutup' : 'Detail' }}
+                </button>
+                <router-link v-if="canEditVisit(v)" :to="`/pemeriksaan/${v.id}`" class="btn small secondary">Edit</router-link>
+                <button v-if="canHapus" class="btn small" style="color: var(--danger); border-color: var(--danger)" @click="hapusRiwayat(v)">Hapus</button>
+              </div>
             </td>
           </tr>
           <tr v-if="expandedVisit">
@@ -96,7 +100,13 @@ const expanded = ref(null)
 
 const canTambah = computed(() => ['admin', 'dokter'].includes(auth.role))
 const canDaftar = computed(() => ['admin', 'dokter'].includes(auth.role))
+const canHapus = computed(() => auth.role === 'admin')
 const expandedVisit = computed(() => riwayat.value.find((v) => v.id === expanded.value))
+
+function canEditVisit(v) {
+  if (auth.role === 'admin') return true
+  return auth.role === 'dokter' && v.doctor_id === auth.user?.id
+}
 
 function toggle(id) {
   expanded.value = expanded.value === id ? null : id
@@ -116,6 +126,17 @@ async function daftarAntrian() {
     alert(`${pasien.value.nama} dapat nomor antrian ${data.antrian_no}`)
   } catch (err) {
     alert(apiErrorMessage(err, 'Gagal daftar antrian'))
+  }
+}
+
+async function hapusRiwayat(v) {
+  if (!confirm(`Hapus riwayat pemeriksaan tanggal ${v.tgl_pemeriksaan || '-'} secara permanen? Tindakan ini tidak bisa dibatalkan.`)) return
+  try {
+    await api.delete(`/visits/${v.id}`)
+    riwayat.value = riwayat.value.filter((x) => x.id !== v.id)
+    if (expanded.value === v.id) expanded.value = null
+  } catch (err) {
+    alert(apiErrorMessage(err, 'Gagal menghapus riwayat'))
   }
 }
 
