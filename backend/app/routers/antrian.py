@@ -13,7 +13,7 @@ from ..redis_client import (
     cache_set,
     next_antrian_counter,
 )
-from ..schemas import AntrianOut, VisitCreate, VisitOut
+from ..schemas import AntrianOut, PatientOut, UserOut, VisitCreate, VisitOut
 
 router = APIRouter(prefix="/antrian", tags=["antrian"])
 
@@ -28,11 +28,14 @@ def _visit_query(db: Session):
 
 
 def _serialize(visits: list[Visit]) -> list[dict]:
+    """Dict JSON-safe (primitif murni) — wajib, karena hasilnya di-cache ke Redis
+    via json.dumps. Objek ORM mentah (Patient/User) tidak JSON-serializable dan
+    akan corrupt jadi string saat di-cache, bikin 500 di request berikutnya."""
     return [
         {
             "visit": VisitOut.model_validate(v).model_dump(mode="json"),
-            "patient": v.patient,
-            "doctor": v.doctor,
+            "patient": PatientOut.model_validate(v.patient).model_dump(mode="json"),
+            "doctor": UserOut.model_validate(v.doctor).model_dump(mode="json") if v.doctor else None,
         }
         for v in visits
     ]
@@ -128,8 +131,8 @@ def antrian_saat_ini(
         return None
     return {
         "visit": VisitOut.model_validate(visit).model_dump(mode="json"),
-        "patient": visit.patient,
-        "doctor": visit.doctor,
+        "patient": PatientOut.model_validate(visit.patient).model_dump(mode="json"),
+        "doctor": UserOut.model_validate(visit.doctor).model_dump(mode="json") if visit.doctor else None,
     }
 
 
