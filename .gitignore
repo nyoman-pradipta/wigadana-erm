@@ -16,3 +16,5 @@ frontend/.env.local
 # Graphify knowledge graph
 graphify-out/
 raw/
+.vercel
+.env*
