@@ -75,6 +75,15 @@ def update_user(
     data = body.model_dump(exclude_unset=True)
     if "no_sip" in data and data["no_sip"] is not None:
         data["no_sip"] = data["no_sip"].strip() or None
+    if "username" in data and data["username"] is not None:
+        new_username = data["username"].strip()
+        dupe = db.query(User).filter(User.username == new_username, User.id != user.id).first()
+        if dupe:
+            raise HTTPException(status_code=409, detail="Username sudah dipakai")
+        data["username"] = new_username
+    password = data.pop("password", None)
+    if password:
+        user.password_hash = hash_password(password)
     for field, value in data.items():
         setattr(user, field, value)
     db.commit()

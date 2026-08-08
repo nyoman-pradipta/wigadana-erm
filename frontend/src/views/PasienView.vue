@@ -38,6 +38,7 @@
                 <router-link :to="`/pasien/${p.id}`" class="btn small secondary">Riwayat</router-link>
                 <router-link :to="`/pasien/${p.id}/edit`" class="btn small secondary" v-if="canTambah">Edit</router-link>
                 <button v-if="canDaftar" class="btn small" @click="daftarAntrian(p)">+ Antrian</button>
+                <button v-if="canHapus" class="btn small" style="color: var(--danger); border-color: var(--danger)" @click="hapusPasien(p)">Hapus</button>
               </div>
             </td>
           </tr>
@@ -59,6 +60,7 @@ const q = ref('')
 
 const canTambah = computed(() => ['admin', 'dokter'].includes(auth.role))
 const canDaftar = computed(() => ['admin', 'dokter'].includes(auth.role))
+const canHapus = computed(() => auth.role === 'admin')
 
 async function muat() {
   try {
@@ -75,6 +77,16 @@ async function daftarAntrian(p) {
     alert(`${p.nama} dapat nomor antrian ${data.antrian_no}`)
   } catch (err) {
     alert(apiErrorMessage(err, 'Gagal daftar antrian'))
+  }
+}
+
+async function hapusPasien(p) {
+  if (!confirm(`Hapus data pasien "${p.nama}" (${p.no_rm}) secara permanen? Tindakan ini tidak bisa dibatalkan.`)) return
+  try {
+    await api.delete(`/patients/${p.id}`)
+    await muat()
+  } catch (err) {
+    alert(apiErrorMessage(err, 'Gagal menghapus pasien'))
   }
 }
 

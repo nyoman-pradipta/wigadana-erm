@@ -11,6 +11,10 @@
 
       <form @submit.prevent="simpanProfil">
         <div class="form-group" style="margin-bottom: 12px">
+          <label>Username</label>
+          <input v-model="profil.username" required minlength="3" />
+        </div>
+        <div class="form-group" style="margin-bottom: 12px">
           <label>Nama Lengkap</label>
           <input v-model="profil.nama" required />
         </div>
@@ -49,7 +53,7 @@ import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
 
-const profil = ref({ nama: '', no_sip: '' })
+const profil = ref({ username: '', nama: '', no_sip: '' })
 const pw = ref({ old_password: '', new_password: '' })
 const savingProfil = ref(false)
 const savingPw = ref(false)
@@ -59,7 +63,7 @@ const pwMsg = ref('')
 const pwErr = ref('')
 
 onMounted(() => {
-  profil.value = { nama: auth.user?.nama || '', no_sip: auth.user?.no_sip || '' }
+  profil.value = { username: auth.user?.username || '', nama: auth.user?.nama || '', no_sip: auth.user?.no_sip || '' }
 })
 
 async function simpanProfil() {
@@ -67,7 +71,7 @@ async function simpanProfil() {
   profileMsg.value = profileErr.value = ''
   try {
     const { data } = await api.put('/auth/me', profil.value)
-    auth.updateUser({ nama: data.nama, no_sip: data.no_sip })
+    auth.updateUser({ username: data.username, nama: data.nama, no_sip: data.no_sip })
     profileMsg.value = 'Profil tersimpan'
   } catch (err) {
     profileErr.value = apiErrorMessage(err, 'Gagal menyimpan profil')

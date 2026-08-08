@@ -28,10 +28,12 @@ class UserCreate(BaseModel):
 
 
 class UserAdminUpdate(BaseModel):
+    username: str | None = Field(default=None, min_length=3, max_length=50)
     nama: str | None = None
     role: str | None = Field(default=None, pattern="^(admin|dokter)$")
     no_sip: str | None = None
     is_active: bool | None = None
+    password: str | None = Field(default=None, min_length=6, max_length=100)
 
 
 class PasswordResetRequest(BaseModel):
@@ -39,6 +41,7 @@ class PasswordResetRequest(BaseModel):
 
 
 class ProfileUpdate(BaseModel):
+    username: str = Field(min_length=3, max_length=50)
     nama: str = Field(min_length=1, max_length=100)
     no_sip: str | None = None
 

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..deps import get_current_user, require_roles
-from ..models import Patient, User
+from ..models import Patient, User, Visit
 from ..schemas import PatientCreate, PatientOut, PatientUpdate
 
 router = APIRouter(prefix="/patients", tags=["pasien"])
@@ -116,3 +116,24 @@ def update_patient(
     db.commit()
     db.refresh(patient)
     return patient
+
+
+@router.delete("/{patient_id}", status_code=204)
+def delete_patient(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles("admin")),
+):
+    """Hapus data pasien permanen — admin only. Diblok kalau pasien punya riwayat
+    pemeriksaan (Visit), supaya rekam medis tidak hilang."""
+    patient = db.get(Patient, patient_id)
+    if patient is None:
+        raise HTTPException(status_code=404, detail="Pasien tidak ditemukan")
+    ada_riwayat = db.query(Visit).filter(Visit.patient_id == patient.id).first() is not None
+    if ada_riwayat:
+        raise HTTPException(
+            status_code=409,
+            detail="Pasien ini punya riwayat pemeriksaan — tidak bisa dihapus demi menjaga rekam medis.",
+        )
+    db.delete(patient)
+    db.commit()

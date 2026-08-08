@@ -44,6 +44,7 @@
             </td>
             <td>
               <div class="row-actions" style="justify-content: flex-end">
+                <button class="btn small secondary" @click="openEdit(u)">Edit</button>
                 <button class="btn small secondary" @click="openReset(u)">Reset Password</button>
                 <button v-if="u.role === 'dokter'" class="btn small" style="color: var(--danger); border-color: var(--danger)" @click="hapusUser(u)">Hapus</button>
               </div>
@@ -101,6 +102,40 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal: edit user (admin - semua field) -->
+    <div v-if="showEdit" class="modal-overlay" @click.self="showEdit = false">
+      <div class="modal">
+        <h3>Edit User — {{ editTarget?.username }}</h3>
+        <div class="form-group" style="margin-bottom: 10px">
+          <label>Username</label>
+          <input v-model="editForm.username" placeholder="min. 3 karakter" />
+        </div>
+        <div class="form-group" style="margin-bottom: 10px">
+          <label>Nama Lengkap</label>
+          <input v-model="editForm.nama" />
+        </div>
+        <div class="form-group" style="margin-bottom: 10px">
+          <label>No. SIP (dokter)</label>
+          <input v-model="editForm.no_sip" placeholder="opsional" />
+        </div>
+        <div class="form-group" style="margin-bottom: 10px">
+          <label>Role</label>
+          <select v-model="editForm.role">
+            <option value="dokter">dokter</option>
+            <option value="admin">admin</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 14px">
+          <label>Password Baru <span class="muted" style="font-weight: 400; font-size: 12px">(kosongkan kalau tidak diganti)</span></label>
+          <input v-model="editForm.password" type="password" placeholder="min. 6 karakter" />
+        </div>
+        <div class="form-actions">
+          <button class="btn" :disabled="saving" @click="simpanEdit">{{ saving ? '...' : 'Simpan' }}</button>
+          <button class="btn secondary" @click="showEdit = false">Batal</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -116,10 +151,13 @@ const success = ref('')
 
 const showCreate = ref(false)
 const showReset = ref(false)
+const showEdit = ref(false)
 const saving = ref(false)
 const form = ref({ username: '', nama: '', password: '', role: 'dokter' })
 const resetTarget = ref(null)
 const resetPassword = ref('')
+const editTarget = ref(null)
+const editForm = ref({ username: '', nama: '', no_sip: '', role: 'dokter', password: '' })
 
 async function muat() {
   try {
@@ -187,6 +225,34 @@ async function resetPw() {
     success.value = `Password ${resetTarget.value.username} direset`
   } catch (err) {
     error.value = apiErrorMessage(err, 'Gagal reset password')
+  } finally {
+    saving.value = false
+  }
+}
+
+function openEdit(u) {
+  editTarget.value = u
+  editForm.value = { username: u.username, nama: u.nama, no_sip: u.no_sip || '', role: u.role, password: '' }
+  showEdit.value = true
+}
+
+async function simpanEdit() {
+  saving.value = true
+  error.value = success.value = ''
+  try {
+    const body = {
+      username: editForm.value.username,
+      nama: editForm.value.nama,
+      no_sip: editForm.value.no_sip,
+      role: editForm.value.role,
+    }
+    if (editForm.value.password) body.password = editForm.value.password
+    await api.put(`/users/${editTarget.value.id}`, body)
+    showEdit.value = false
+    success.value = `User ${editForm.value.username} diperbarui`
+    await muat()
+  } catch (err) {
+    error.value = apiErrorMessage(err, 'Gagal menyimpan perubahan user')
   } finally {
     saving.value = false
   }

@@ -57,7 +57,13 @@ def update_profil(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """Edit nama & no. SIP sendiri. Identitas dari token (bukan path param) — anti IDOR."""
+    """Edit username, nama & no. SIP sendiri. Identitas dari token (bukan path param) — anti IDOR."""
+    new_username = body.username.strip()
+    if new_username != user.username:
+        dupe = db.query(User).filter(User.username == new_username, User.id != user.id).first()
+        if dupe:
+            raise HTTPException(status_code=409, detail="Username sudah dipakai")
+        user.username = new_username
     user.nama = body.nama.strip()
     if body.no_sip is not None:
         user.no_sip = body.no_sip.strip() or None

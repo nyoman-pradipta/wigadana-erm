@@ -62,8 +62,8 @@ def login_admin(client):
 def test_profil_dan_ganti_password(client, dokter_token):
     h = auth(dokter_token)
 
-    # ganti nama sendiri
-    r = client.put("/api/auth/me", headers=h, json={"nama": "Dr. Andini Wijaya"})
+    # ganti nama sendiri (username wajib dikirim, tetap sama)
+    r = client.put("/api/auth/me", headers=h, json={"username": "wigadana", "nama": "Dr. Andini Wijaya"})
     assert r.status_code == 200
     assert r.json()["nama"] == "Dr. Andini Wijaya"
 
@@ -225,3 +225,73 @@ def test_surat_sakit_pdf(client, dokter_token):
 
     # tanpa token -> 401
     assert client.get(f"/api/visits/{v['id']}/pdf/surat-sakit").status_code == 401
+
+
+# ===== Fitur revisi: admin edit user manapun (username/nama/no_sip/password/role) =====
+def test_admin_edit_semua_user(client, dokter_token):
+    ha = auth(login_admin(client))
+
+    # buat dokter target
+    r = client.post("/api/users", headers=ha, json={
+        "username": "dr.editme", "password": "rahasia123", "nama": "Dr. Edit Me", "role": "dokter",
+    })
+    uid = r.json()["id"]
+
+    # admin ganti username, nama, no_sip, role, password sekaligus
+    r = client.put(f"/api/users/{uid}", headers=ha, json={
+        "username": "dr.editme2", "nama": "Dr. Sudah Diedit", "no_sip": "SIP-999",
+        "role": "dokter", "password": "passwordBaru1",
+    })
+    assert r.status_code == 200
+    data = r.json()
+    assert data["username"] == "dr.editme2"
+    assert data["nama"] == "Dr. Sudah Diedit"
+    assert data["no_sip"] == "SIP-999"
+
+    # login dengan username & password baru harus berhasil
+    r = client.post("/api/auth/login", json={"username": "dr.editme2", "password": "passwordBaru1"})
+    assert r.status_code == 200
+
+    # username bentrok dengan user lain -> 409
+    r = client.put(f"/api/users/{uid}", headers=ha, json={"username": "wigadana"})
+    assert r.status_code == 409
+
+    # non-admin tidak boleh edit user lain -> 403
+    h = auth(dokter_token)
+    r = client.put(f"/api/users/{uid}", headers=h, json={"nama": "Hacked"})
+    assert r.status_code == 403
+
+    # cleanup
+    client.delete(f"/api/users/{uid}", headers=ha)
+
+
+def test_user_edit_profil_sendiri_dengan_username(client, dokter_token):
+    h = auth(dokter_token)
+    r = client.put("/api/auth/me", headers=h, json={"username": "wigadana", "nama": "Dr. Wiga", "no_sip": "SIP-1"})
+    assert r.status_code == 200
+    assert r.json()["username"] == "wigadana"
+
+    # username bentrok punya admin -> 409
+    r = client.put("/api/auth/me", headers=h, json={"username": "admin", "nama": "Dr. Wiga"})
+    assert r.status_code == 409
+
+
+# ===== Fitur revisi: admin bisa hapus data pasien =====
+def test_admin_hapus_pasien(client, dokter_token):
+    h = auth(dokter_token)
+    ha = auth(login_admin(client))
+
+    # pasien tanpa riwayat -> admin bisa hapus
+    p = client.post("/api/patients", headers=h, json={"nama": "Pasien Dihapus Admin"}).json()
+    assert client.delete(f"/api/patients/{p['id']}", headers=ha).status_code == 204
+    assert client.get(f"/api/patients/{p['id']}", headers=h).status_code == 404
+
+    # dokter (non-admin) tidak boleh hapus pasien -> 403
+    p2 = client.post("/api/patients", headers=h, json={"nama": "Pasien Test 403"}).json()
+    assert client.delete(f"/api/patients/{p2['id']}", headers=h).status_code == 403
+
+    # pasien dengan riwayat visit -> tidak bisa dihapus (409)
+    v = client.post("/api/antrian", headers=h, json={"patient_id": p2["id"]}).json()
+    client.post(f"/api/antrian/{v['id']}/panggil", headers=h)
+    client.put(f"/api/visits/{v['id']}", headers=h, json={"anamnesa": "Cek", "diagnosa": "Sehat"})
+    assert client.delete(f"/api/patients/{p2['id']}", headers=ha).status_code == 409
