@@ -297,6 +297,26 @@ def test_admin_hapus_pasien(client, dokter_token):
     assert client.delete(f"/api/patients/{p2['id']}", headers=ha).status_code == 409
 
 
+# ===== Bugfix: pasien dgn antrian batal/belum diperiksa (bukan riwayat medis nyata) HARUS bisa dihapus =====
+def test_admin_hapus_pasien_dengan_antrian_batal_bukan_riwayat(client, dokter_token):
+    h = auth(dokter_token)
+    ha = auth(login_admin(client))
+
+    # antrian dibatalkan (tanpa data medis apapun) -> bukan riwayat, pasien tetap bisa dihapus
+    p = client.post("/api/patients", headers=h, json={"nama": "Prod Test Surat Sakit Bug"}).json()
+    v = client.post("/api/antrian", headers=h, json={"patient_id": p["id"]}).json()
+    r = client.post(f"/api/antrian/{v['id']}/batal", headers=h)
+    assert r.status_code == 200
+    assert r.json()["status"] == "batal"
+    assert client.delete(f"/api/patients/{p['id']}", headers=ha).status_code == 204
+    assert client.get(f"/api/patients/{p['id']}", headers=ha).status_code == 404
+
+    # antrian masih menunggu (belum sempat diperiksa) -> juga bukan riwayat, tetap bisa dihapus
+    p2 = client.post("/api/patients", headers=h, json={"nama": "Pasien Masih Menunggu"}).json()
+    client.post("/api/antrian", headers=h, json={"patient_id": p2["id"]})
+    assert client.delete(f"/api/patients/{p2['id']}", headers=ha).status_code == 204
+
+
 # ===== Fitur revisi: edit riwayat (dokter penanggung jawab atau admin) =====
 def test_edit_riwayat_dokter_penanggung_jawab_atau_admin(client, dokter_token):
     h = auth(dokter_token)

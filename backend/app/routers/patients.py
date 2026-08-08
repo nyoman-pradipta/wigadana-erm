@@ -125,15 +125,25 @@ def delete_patient(
     _: User = Depends(require_roles("admin")),
 ):
     """Hapus data pasien permanen — admin only. Diblok kalau pasien punya riwayat
-    pemeriksaan (Visit), supaya rekam medis tidak hilang."""
+    pemeriksaan (Visit berstatus 'diperiksa'/'selesai', artinya sudah ada data medis
+    tercatat), supaya rekam medis tidak hilang. Antrian yang masih menunggu/dipanggil
+    atau dibatalkan tanpa data medis tidak dianggap riwayat."""
     patient = db.get(Patient, patient_id)
     if patient is None:
         raise HTTPException(status_code=404, detail="Pasien tidak ditemukan")
-    ada_riwayat = db.query(Visit).filter(Visit.patient_id == patient.id).first() is not None
+    ada_riwayat = (
+        db.query(Visit)
+        .filter(Visit.patient_id == patient.id, Visit.status.in_(["diperiksa", "selesai"]))
+        .first()
+        is not None
+    )
     if ada_riwayat:
         raise HTTPException(
             status_code=409,
             detail="Pasien ini punya riwayat pemeriksaan — tidak bisa dihapus demi menjaga rekam medis.",
         )
+    # hapus dulu antrian non-medis (menunggu/dipanggil/batal) yang tersisa,
+    # supaya tidak menabrak FK constraint saat pasien dihapus
+    db.query(Visit).filter(Visit.patient_id == patient.id).delete(synchronize_session=False)
     db.delete(patient)
     db.commit()
