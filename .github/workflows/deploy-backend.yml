@@ -1,0 +1,28 @@
+name: Deploy Backend ke VPS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'requirements.txt'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH ke VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 202.10.42.171
+          username: root
+          key: ${{ secrets.ERM_SSH_KEY }}
+          script: |
+            cd /opt/erm
+            git pull --ff-only origin main
+            cd backend
+            .venv/bin/pip install -q -r requirements.txt
+            systemctl restart erm
+            sleep 3
+            systemctl is-active erm
+            curl -s -o /dev/null -w "health: %{http_code}\n" http://127.0.0.1:8000/api/health
