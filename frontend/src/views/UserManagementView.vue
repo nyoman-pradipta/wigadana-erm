@@ -45,6 +45,7 @@
             <td>
               <div class="row-actions" style="justify-content: flex-end">
                 <button class="btn small secondary" @click="openReset(u)">Reset Password</button>
+                <button v-if="u.role === 'dokter'" class="btn small" style="color: var(--danger); border-color: var(--danger)" @click="hapusUser(u)">Hapus</button>
               </div>
             </td>
           </tr>
@@ -156,6 +157,18 @@ async function toggleAktif(u) {
     await muat()
   } catch (err) {
     error.value = apiErrorMessage(err, 'Gagal mengubah status')
+  }
+}
+
+async function hapusUser(u) {
+  if (!confirm(`Hapus akun dokter "${u.nama}" (${u.username}) secara permanen? Tindakan ini tidak bisa dibatalkan.`)) return
+  error.value = success.value = ''
+  try {
+    await api.delete(`/users/${u.id}`)
+    success.value = `User ${u.username} dihapus`
+    await muat()
+  } catch (err) {
+    error.value = apiErrorMessage(err, 'Gagal menghapus user')
   }
 }
 

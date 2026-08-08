@@ -10,8 +10,12 @@
         <div>
           <h2 style="margin-bottom: 6px">{{ pasien.nama }}</h2>
           <div class="muted" style="line-height: 1.7">
-            <strong>{{ pasien.no_rm }}</strong> · {{ pasien.jenis_identitas }} {{ pasien.no_identitas || '—' }}<br />
-            {{ pasien.alamat || '—' }} · HP: {{ pasien.no_hp || '—' }}
+            <strong>{{ pasien.no_rm }}</strong> · {{ pasien.jenis_identitas }} {{ pasien.no_identitas || '—' }}
+            <span v-if="pasien.usia != null"> · {{ pasien.usia }} tahun</span><br />
+            {{ pasien.alamat || '—' }} · HP: {{ pasien.no_hp || '—' }}<br />
+            <span class="muted" style="font-size: 12px">
+              {{ pasien.pekerjaan || '—' }} · {{ pasien.agama || '—' }} · {{ pasien.kewarganegaraan || '—' }} · {{ pasien.status_perkawinan || '—' }}
+            </span>
           </div>
           <div v-if="pasien.riwayat_alergi" style="margin-top: 8px">
             <span class="badge" style="background: #fef2f2; color: var(--danger)">⚠️ Alergi: {{ pasien.riwayat_alergi }}</span>

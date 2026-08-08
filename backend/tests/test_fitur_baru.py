@@ -132,3 +132,96 @@ def test_pdf_rekam_medis_dan_resep(client, dokter_token):
 
     # tanpa token -> 401
     assert client.get(f"/api/visits/{v['id']}/pdf/rekam-medis").status_code == 401
+
+
+# ===== Fitur revisi: delete user (admin-only, target dokter saja) =====
+def test_delete_user_hanya_admin_dan_target_dokter(client, dokter_token):
+    h = auth(dokter_token)
+    ha = auth(login_admin(client))
+
+    # dokter (non-admin) tidak boleh delete -> 403
+    assert client.delete("/api/users/1", headers=h).status_code == 403
+
+    # admin buat dokter baru tanpa riwayat -> boleh dihapus
+    r = client.post("/api/users", headers=ha, json={
+        "username": "dr.hapus", "password": "rahasia123",
+        "nama": "Dr. Dihapus", "role": "dokter",
+    })
+    new_id = r.json()["id"]
+    assert client.delete(f"/api/users/{new_id}", headers=ha).status_code == 204
+    assert client.delete(f"/api/users/{new_id}", headers=ha).status_code == 404  # sudah hilang
+
+    # admin tidak bisa hapus akun admin lain (apalagi diri sendiri)
+    admin_id = client.get("/api/users", headers=ha, params={"q": "admin"}).json()[0]["id"]
+    assert client.delete(f"/api/users/{admin_id}", headers=ha).status_code == 403
+
+    # dokter yang PUNYA riwayat visit -> tidak bisa dihapus (409)
+    dokter_id = client.get("/api/users", headers=ha, params={"q": "wigadana"}).json()[0]["id"]
+    assert client.delete(f"/api/users/{dokter_id}", headers=ha).status_code == 409
+
+
+# ===== Fitur revisi: identitas dokter di header PDF =====
+def test_pdf_header_identitas_dokter(client, dokter_token):
+    h = auth(dokter_token)
+    p = client.post("/api/patients", headers=h, json={"nama": "Test Header PDF"}).json()
+    v = client.post("/api/antrian", headers=h, json={"patient_id": p["id"]}).json()
+    client.post(f"/api/antrian/{v['id']}/panggil", headers=h)
+    client.put(f"/api/visits/{v['id']}", headers=h, json={"anamnesa": "Cek", "diagnosa": "Sehat"})
+    r = client.get(f"/api/visits/{v['id']}/pdf/rekam-medis", headers=h)
+    assert r.status_code == 200
+    assert r.content[:5] == b"%PDF-"
+
+
+# ===== Fitur revisi: data pendaftaran pasien (agama, kewarganegaraan, status, tgl lahir -> usia) =====
+def test_pasien_field_baru_dan_usia_otomatis(client, dokter_token):
+    h = auth(dokter_token)
+    r = client.post("/api/patients", headers=h, json={
+        "nama": "Pasien Lengkap",
+        "agama": "Hindu",
+        "kewarganegaraan": "WNI",
+        "status_perkawinan": "Menikah",
+        "pekerjaan": "Petani",
+        "tgl_lahir": "2000-06-15",
+    })
+    assert r.status_code == 201
+    data = r.json()
+    assert data["agama"] == "Hindu"
+    assert data["kewarganegaraan"] == "WNI"
+    assert data["status_perkawinan"] == "Menikah"
+    assert data["pekerjaan"] == "Petani"
+    assert data["tgl_lahir"] == "2000-06-15"
+    assert isinstance(data["usia"], int)
+    assert data["usia"] >= 24  # 2026 - 2000, minimal (belum ultah tahun ini bisa 25)
+
+    # tanpa tgl_lahir -> usia None (bukan error/crash)
+    r2 = client.post("/api/patients", headers=h, json={"nama": "Tanpa Tgl Lahir"})
+    assert r2.status_code == 201
+    assert r2.json()["usia"] is None
+
+
+# ===== Fitur revisi: surat keterangan sakit =====
+def test_surat_sakit_pdf(client, dokter_token):
+    h = auth(dokter_token)
+    p = client.post("/api/patients", headers=h, json={
+        "nama": "Pasien Sakit", "pekerjaan": "Karyawan", "tgl_lahir": "1995-01-01",
+    }).json()
+    v = client.post("/api/antrian", headers=h, json={"patient_id": p["id"]}).json()
+    client.post(f"/api/antrian/{v['id']}/panggil", headers=h)
+
+    # belum isi tanggal istirahat -> 404
+    assert client.get(f"/api/visits/{v['id']}/pdf/surat-sakit", headers=h).status_code == 404
+
+    r = client.put(f"/api/visits/{v['id']}", headers=h, json={
+        "anamnesa": "Demam", "diagnosa": "Flu",
+        "surat_sakit_tgl_mulai": "2026-08-10", "surat_sakit_tgl_selesai": "2026-08-12",
+    })
+    assert r.status_code == 200
+    assert r.json()["surat_sakit_tgl_mulai"] == "2026-08-10"
+
+    r = client.get(f"/api/visits/{v['id']}/pdf/surat-sakit", headers=h)
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "application/pdf"
+    assert r.content[:5] == b"%PDF-"
+
+    # tanpa token -> 401
+    assert client.get(f"/api/visits/{v['id']}/pdf/surat-sakit").status_code == 401

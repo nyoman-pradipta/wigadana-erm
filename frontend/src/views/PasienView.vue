@@ -16,6 +16,7 @@
           <tr>
             <th>No. RM</th>
             <th>Nama</th>
+            <th>Usia</th>
             <th>No. HP</th>
             <th>Identitas</th>
             <th>Alergi</th>
@@ -26,6 +27,7 @@
           <tr v-for="p in pasien" :key="p.id">
             <td style="font-weight: 600">{{ p.no_rm }}</td>
             <td>{{ p.nama }}</td>
+            <td>{{ p.usia != null ? p.usia + ' th' : '—' }}</td>
             <td>{{ p.no_hp || '—' }}</td>
             <td class="muted" style="font-size: 12px">
               {{ p.jenis_identitas }} {{ p.no_identitas || '' }}

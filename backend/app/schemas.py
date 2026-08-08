@@ -61,6 +61,11 @@ class PatientBase(BaseModel):
     jenis_identitas: str = "KTP"  # KTP | KITAS | PASSPORT
     no_identitas: str = ""
     no_hp: str = ""
+    tgl_lahir: date | None = None
+    pekerjaan: str = ""
+    agama: str = ""
+    kewarganegaraan: str = "WNI"
+    status_perkawinan: str = ""
     riwayat_alergi: str = ""
     riwayat_alergi_obat: str = ""
 
@@ -75,6 +80,11 @@ class PatientUpdate(BaseModel):
     jenis_identitas: str | None = None
     no_identitas: str | None = None
     no_hp: str | None = None
+    tgl_lahir: date | None = None
+    pekerjaan: str | None = None
+    agama: str | None = None
+    kewarganegaraan: str | None = None
+    status_perkawinan: str | None = None
     riwayat_alergi: str | None = None
     riwayat_alergi_obat: str | None = None
 
@@ -84,6 +94,7 @@ class PatientOut(PatientBase):
 
     id: int
     no_rm: str
+    usia: int | None = None
     created_at: datetime
 
 
@@ -104,6 +115,8 @@ class PemeriksaanUpdate(BaseModel):
     pemeriksaan_fisik: str | None = None
     diagnosa: str | None = None
     terapi: str | None = None
+    surat_sakit_tgl_mulai: date | None = None
+    surat_sakit_tgl_selesai: date | None = None
 
 
 class VisitOut(BaseModel):
@@ -125,6 +138,8 @@ class VisitOut(BaseModel):
     pemeriksaan_fisik: str | None
     diagnosa: str | None
     terapi: str | None
+    surat_sakit_tgl_mulai: date | None = None
+    surat_sakit_tgl_selesai: date | None = None
     created_at: datetime
     updated_at: datetime
     patient: PatientOut | None = None

@@ -33,6 +33,44 @@
             <label>No. HP</label>
             <input v-model="form.no_hp" placeholder="08xxxxxxxxxx" />
           </div>
+          <div class="form-group">
+            <label>Tanggal Lahir</label>
+            <input v-model="form.tgl_lahir" type="date" />
+          </div>
+          <div class="form-group">
+            <label>Pekerjaan</label>
+            <input v-model="form.pekerjaan" />
+          </div>
+          <div class="form-group">
+            <label>Agama</label>
+            <select v-model="form.agama">
+              <option value="">— pilih —</option>
+              <option>Islam</option>
+              <option>Kristen</option>
+              <option>Katolik</option>
+              <option>Hindu</option>
+              <option>Buddha</option>
+              <option>Konghucu</option>
+              <option>Lainnya</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Kewarganegaraan</label>
+            <select v-model="form.kewarganegaraan">
+              <option>WNI</option>
+              <option>WNA</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Status Perkawinan</label>
+            <select v-model="form.status_perkawinan">
+              <option value="">— pilih —</option>
+              <option>Belum Menikah</option>
+              <option>Menikah</option>
+              <option>Cerai Hidup</option>
+              <option>Cerai Mati</option>
+            </select>
+          </div>
           <div class="form-group full">
             <label>Riwayat Alergi Obat *</label>
             <textarea v-model="form.riwayat_alergi_obat" rows="2" placeholder="cth: penisilin, amoxicillin — kosongkan kalau TIDAK ADA alergi obat"></textarea>
@@ -67,6 +105,11 @@ const form = ref({
   jenis_identitas: 'KTP',
   no_identitas: '',
   no_hp: '',
+  tgl_lahir: '',
+  pekerjaan: '',
+  agama: '',
+  kewarganegaraan: 'WNI',
+  status_perkawinan: '',
   riwayat_alergi: '',
   riwayat_alergi_obat: '',
 })
@@ -83,6 +126,11 @@ onMounted(async () => {
       jenis_identitas: data.jenis_identitas,
       no_identitas: data.no_identitas,
       no_hp: data.no_hp,
+      tgl_lahir: data.tgl_lahir || '',
+      pekerjaan: data.pekerjaan || '',
+      agama: data.agama || '',
+      kewarganegaraan: data.kewarganegaraan || 'WNI',
+      status_perkawinan: data.status_perkawinan || '',
       riwayat_alergi: data.riwayat_alergi,
       riwayat_alergi_obat: data.riwayat_alergi_obat,
     }

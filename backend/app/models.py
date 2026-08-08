@@ -29,9 +29,25 @@ class Patient(Base):
     jenis_identitas: Mapped[str] = mapped_column(String(20), default="KTP")  # KTP | KITAS | PASSPORT
     no_identitas: Mapped[str] = mapped_column(String(50), default="")
     no_hp: Mapped[str] = mapped_column(String(20), default="")
+    tgl_lahir: Mapped[date | None] = mapped_column(Date, nullable=True)  # untuk hitung usia otomatis
+    pekerjaan: Mapped[str] = mapped_column(String(100), default="")  # untuk surat sakit
+    agama: Mapped[str] = mapped_column(String(30), default="")
+    kewarganegaraan: Mapped[str] = mapped_column(String(30), default="WNI")
+    status_perkawinan: Mapped[str] = mapped_column(String(20), default="")  # Belum Menikah | Menikah | Cerai
     riwayat_alergi: Mapped[str] = mapped_column(Text, default="")
     riwayat_alergi_obat: Mapped[str] = mapped_column(Text, default="")  # WAJIB tampil sebelum anamnesis
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    @property
+    def usia(self) -> int | None:
+        """Usia dalam tahun, dihitung dari tgl_lahir (bukan disimpan — selalu akurat)."""
+        if self.tgl_lahir is None:
+            return None
+        today = date.today()
+        years = today.year - self.tgl_lahir.year
+        if (today.month, today.day) < (self.tgl_lahir.month, self.tgl_lahir.day):
+            years -= 1
+        return years
 
     visits: Mapped[list["Visit"]] = relationship(
         back_populates="patient", cascade="all, delete-orphan"
@@ -60,6 +76,10 @@ class Visit(Base):
     pemeriksaan_fisik: Mapped[str | None] = mapped_column(Text, nullable=True)
     diagnosa: Mapped[str | None] = mapped_column(Text, nullable=True)
     terapi: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # ===== surat keterangan sakit (opsional, diisi kalau pasien minta) =====
+    surat_sakit_tgl_mulai: Mapped[date | None] = mapped_column(Date, nullable=True)
+    surat_sakit_tgl_selesai: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

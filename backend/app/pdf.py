@@ -255,3 +255,62 @@ def build_resep_pdf(visit) -> bytes:
 
     doc.build(elements)
     return buf.getvalue()
+
+
+def build_surat_sakit_pdf(visit) -> bytes:
+    """Surat Keterangan Sakit — dicetak kalau pasien minta setelah pemeriksaan.
+    Butuh surat_sakit_tgl_mulai & surat_sakit_tgl_selesai terisi di visit."""
+    s = _styles()
+    p = visit.patient
+    doc, buf = _make_doc(f"Surat Sakit {p.no_rm}")
+    elements = []
+    _klinik_header(elements, s)
+    elements.append(Paragraph("SURAT KETERANGAN SAKIT", s["title"]))
+    elements.append(Spacer(1, 10))
+
+    usia = f"{p.usia} tahun" if p.usia is not None else "-"
+    elements.append(_field_table([
+        ("Nama", p.nama),
+        ("Usia", usia),
+        ("Alamat", p.alamat or "-"),
+        ("Pekerjaan", p.pekerjaan or "-"),
+    ]))
+    elements.append(Spacer(1, 10))
+
+    tgl_mulai = visit.surat_sakit_tgl_mulai.strftime("%d-%m-%Y") if visit.surat_sakit_tgl_mulai else "-"
+    tgl_selesai = visit.surat_sakit_tgl_selesai.strftime("%d-%m-%Y") if visit.surat_sakit_tgl_selesai else "-"
+    diagnosa = escape(visit.diagnosa or "-")
+    nama_pasien = escape(p.nama)
+    body_text = (
+        f"Yang bertanda tangan di bawah ini menerangkan bahwa benar pasien atas nama "
+        f"<b>{nama_pasien}</b> telah diperiksa dan berobat, dengan diagnosa "
+        f"<b>{diagnosa}</b>, dan perlu istirahat pada tanggal "
+        f"<b>{escape(tgl_mulai)}</b> sampai dengan <b>{escape(tgl_selesai)}</b>."
+    )
+    elements.append(Paragraph(body_text, ParagraphStyle(
+        "surat_body", fontName=FONT, fontSize=10, leading=16, alignment=4,  # justify
+    )))
+    elements.append(Spacer(1, 10))
+    elements.append(Paragraph(
+        "Demikian surat keterangan ini dibuat dengan sebenarnya untuk dipergunakan sebagaimana mestinya.",
+        ParagraphStyle("surat_penutup", fontName=FONT, fontSize=10, leading=14),
+    ))
+    elements.append(Spacer(1, 26))
+
+    dokter = visit.doctor
+    nama_dokter = dokter.nama if dokter else "-"
+    tgl_cetak = datetime.now().strftime("%d-%m-%Y")
+    t_ttd = Table(
+        [[f"{tgl_cetak}"], [""], [""], [f"({nama_dokter})"]],
+        colWidths=[62 * mm],
+    )
+    t_ttd.setStyle(TableStyle([
+        ("ALIGN", (0, 0), (0, -1), "CENTER"),
+        ("LEFTPADDING", (0, 0), (0, -1), 62 * mm),
+        ("TOPPADDING", (0, 3), (0, 3), 4),
+        ("LINEABOVE", (0, 3), (0, 3), 0.6, colors.black),
+    ]))
+    elements.append(t_ttd)
+
+    doc.build(elements)
+    return buf.getvalue()

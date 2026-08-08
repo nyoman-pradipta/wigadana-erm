@@ -8,9 +8,9 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 720
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
-    # Info klinik untuk header PDF (rekam medis & resep)
-    CLINIC_NAME: str = "Klinik Sehat"
-    CLINIC_ADDRESS: str = ""
+    # Info klinik untuk header PDF (rekam medis & resep & surat sakit)
+    CLINIC_NAME: str = "DPP dr. Ngakan Putu Wiga Kusuma Wibawa, S.Ked"
+    CLINIC_ADDRESS: str = "Jalan Dewi Sartika No. 67, Kuta, Badung, Bali"
     CLINIC_PHONE: str = ""
     # Password seed user pertama (dev/demo). Kosong -> random dicetak ke stdout.
     SEED_ADMIN_PASSWORD: str | None = None

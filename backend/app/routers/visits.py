@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, joinedload
 from ..database import get_db
 from ..deps import get_current_user, require_roles
 from ..models import User, Visit
-from ..pdf import build_rekam_medis_pdf, build_resep_pdf
+from ..pdf import build_rekam_medis_pdf, build_resep_pdf, build_surat_sakit_pdf
 from ..redis_client import cache_delete, cache_delete_prefix, cache_get, cache_set
 from ..schemas import PemeriksaanUpdate, VisitOut
 
@@ -85,6 +85,30 @@ def pdf_resep(
         media_type="application/pdf",
         headers={
             "Content-Disposition": f'inline; filename="Resep-{visit.patient.no_rm}-{visit.id}.pdf"'
+        },
+    )
+
+
+@router.get("/{visit_id}/pdf/surat-sakit")
+def pdf_surat_sakit(
+    visit_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    visit = _visit_query(db).filter(Visit.id == visit_id).first()
+    if visit is None:
+        raise HTTPException(status_code=404, detail="Pemeriksaan tidak ditemukan")
+    if not visit.surat_sakit_tgl_mulai or not visit.surat_sakit_tgl_selesai:
+        raise HTTPException(
+            status_code=404,
+            detail="Isi tanggal mulai & selesai istirahat dulu untuk mencetak surat sakit",
+        )
+    pdf = build_surat_sakit_pdf(visit)
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="SuratSakit-{visit.patient.no_rm}-{visit.id}.pdf"'
         },
     )
 

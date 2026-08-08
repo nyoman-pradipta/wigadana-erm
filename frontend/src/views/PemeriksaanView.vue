@@ -71,10 +71,23 @@
           </div>
         </div>
 
+        <h3>Surat Keterangan Sakit <span class="muted" style="font-weight: 400; font-size: 12px">(isi kalau pasien minta surat sakit)</span></h3>
+        <div class="form-grid" style="margin-bottom: 14px">
+          <div class="form-group">
+            <label>Istirahat Mulai</label>
+            <input v-model="form.surat_sakit_tgl_mulai" type="date" />
+          </div>
+          <div class="form-group">
+            <label>Istirahat Sampai</label>
+            <input v-model="form.surat_sakit_tgl_selesai" type="date" />
+          </div>
+        </div>
+
         <div class="form-actions">
           <button class="btn" :disabled="loading">{{ loading ? 'Menyimpan...' : 'Simpan Pemeriksaan' }}</button>
           <button type="button" class="btn secondary" @click="cetak('rekam-medis')">🖨️ Rekam Medis</button>
           <button type="button" class="btn secondary" @click="cetak('resep')">🖨️ Resep</button>
+          <button type="button" class="btn secondary" @click="cetak('surat-sakit')">🖨️ Surat Sakit</button>
         </div>
         <p class="muted" style="margin-top: 10px; font-size: 12px">
           Terisi diagnosa + terapi → status otomatis <strong>selesai</strong> dan masuk riwayat pasien.
@@ -100,6 +113,8 @@ const form = ref({
   pemeriksaan_fisik: '',
   diagnosa: '',
   terapi: '',
+  surat_sakit_tgl_mulai: '',
+  surat_sakit_tgl_selesai: '',
 })
 const loading = ref(false)
 const error = ref('')
@@ -116,6 +131,8 @@ onMounted(async () => {
       pemeriksaan_fisik: data.pemeriksaan_fisik || '',
       diagnosa: data.diagnosa || '',
       terapi: data.terapi || '',
+      surat_sakit_tgl_mulai: data.surat_sakit_tgl_mulai || '',
+      surat_sakit_tgl_selesai: data.surat_sakit_tgl_selesai || '',
     }
   } catch (err) {
     error.value = apiErrorMessage(err, 'Gagal memuat pemeriksaan')

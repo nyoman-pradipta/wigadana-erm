@@ -44,8 +44,8 @@ services:
       REDIS_URL: redis://redis:6379/0
       SECRET_KEY: ${SECRET_KEY:-ganti-secret-key-ini}
       CORS_ORIGINS: ${CORS_ORIGINS:-https://erm-frontend.vercel.app}
-      CLINIC_NAME: ${CLINIC_NAME:-Klinik Sehat}
-      CLINIC_ADDRESS: ${CLINIC_ADDRESS:-}
+      CLINIC_NAME: ${CLINIC_NAME:-DPP dr. Ngakan Putu Wiga Kusuma Wibawa, S.Ked}
+      CLINIC_ADDRESS: ${CLINIC_ADDRESS:-Jalan Dewi Sartika No. 67, Kuta, Badung, Bali}
       CLINIC_PHONE: ${CLINIC_PHONE:-}
     ports:
       - "8000:8000"

@@ -71,6 +71,11 @@ def create_patient(
         jenis_identitas=body.jenis_identitas,
         no_identitas=body.no_identitas.strip(),
         no_hp=body.no_hp.strip(),
+        tgl_lahir=body.tgl_lahir,
+        pekerjaan=body.pekerjaan.strip(),
+        agama=body.agama.strip(),
+        kewarganegaraan=body.kewarganegaraan.strip(),
+        status_perkawinan=body.status_perkawinan.strip(),
         riwayat_alergi=body.riwayat_alergi.strip(),
         riwayat_alergi_obat=body.riwayat_alergi_obat.strip(),
     )
