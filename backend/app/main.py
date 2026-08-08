@@ -25,11 +25,11 @@ def _seed_default_users() -> None:
             return
         seed_pw = {
             "admin": settings.SEED_ADMIN_PASSWORD,
-            "dokter": settings.SEED_DOKTER_PASSWORD,
+            "wigadana": settings.SEED_DOKTER_PASSWORD,
         }
         defaults = [
             ("admin", "Administrator", "admin"),
-            ("dokter", "Dr. Andini", "dokter"),
+            ("wigadana", "Dr. Andini", "dokter"),
         ]
         created = []
         for username, nama, role in defaults:

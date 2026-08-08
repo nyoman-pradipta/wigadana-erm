@@ -4,7 +4,7 @@
 #
 #   Frontend : http://localhost:5173  (browser dibuka otomatis)
 #   Backend  : http://localhost:8000  (API docs: /docs)
-#   Login    : admin/admin123 · dokter/dokter123 · suster/suster123
+#   Login    : admin/123456 · wigadana/123456
 #   Stop     : Ctrl+C
 #
 # Kebutuhan: Python 3.11+, Node 18+. Tanpa PostgreSQL/Redis — pakai
@@ -26,10 +26,10 @@ CORS_ORIGINS=http://localhost:5173
 CLINIC_NAME="Klinik Sehat"
 CLINIC_ADDRESS="Jl. Raya No. 1, Jakarta"
 CLINIC_PHONE=021-5551234
-SEED_ADMIN_PASSWORD=admin123
-SEED_DOKTER_PASSWORD=dokter123
+SEED_ADMIN_PASSWORD=123456
+SEED_DOKTER_PASSWORD=123456
 EOF
-  echo "  -> backend/.env dibuat (password login: admin123 / dokter123 / suster123)"
+  echo "  -> backend/.env dibuat (password login: admin/123456 · wigadana/123456)"
 fi
 
 # ---------- 2. dependency (kalau belum ada) ----------
@@ -91,7 +91,7 @@ echo
 echo "================================================================"
 echo "  ERM Klinik jalan!"
 echo "    Browser : http://localhost:5173  (dibuka otomatis)"
-echo "    Login   : admin/admin123 · dokter/dokter123 · suster/suster123"
+echo "    Login   : admin/123456 · wigadana/123456"
 echo "    API docs: http://localhost:8000/docs"
 echo "    Log     : $LOG_BACKEND | $LOG_FRONTEND"
 echo "    Stop    : Ctrl+C"

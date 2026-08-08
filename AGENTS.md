@@ -56,7 +56,7 @@ dilewati yang ada tool-nya:
   (CATATAN: shell user punya `NODE_ENV=production` global, devDeps perlu override).
 - Run backend dev: `cd backend && DATABASE_URL=sqlite:///./erm_dev.db .venv/bin/uvicorn app.main:app --reload`
 - Run frontend dev: `cd frontend && NODE_ENV=development npx vite`
-- User default: admin/admin123, dokter/dokter123.
+- User default: admin/123456, wigadana/123456.
 - API docs: http://localhost:8000/docs saat backend jalan.
 
 ## Konvensi

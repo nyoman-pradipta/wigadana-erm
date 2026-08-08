@@ -34,9 +34,9 @@ def test_admin_kelola_user(client, dokter_token):
     assert client.post("/api/auth/login", json={"username": "dr.budi", "password": "rahasia123"}).status_code == 401
 
     # token lama user yang dinonaktifkan -> 401 juga
-    t = client.post("/api/auth/login", json={"username": "dokter", "password": "dokter123"}).json()["access_token"]
+    t = client.post("/api/auth/login", json={"username": "wigadana", "password": "123456"}).json()["access_token"]
     # nonaktifkan dokter oleh admin
-    dokter_id = client.get("/api/users", headers=ha, params={"q": "dokter"}).json()[0]["id"]
+    dokter_id = client.get("/api/users", headers=ha, params={"q": "wigadana"}).json()[0]["id"]
     client.put(f"/api/users/{dokter_id}", headers=ha, json={"is_active": False})
     assert client.get("/api/antrian", headers=auth(t)).status_code == 401
     # aktifkan lagi
@@ -53,7 +53,7 @@ def test_admin_kelola_user(client, dokter_token):
 
 
 def login_admin(client):
-    r = client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
+    r = client.post("/api/auth/login", json={"username": "admin", "password": "123456"})
     assert r.status_code == 200
     return r.json()["access_token"]
 
@@ -73,14 +73,14 @@ def test_profil_dan_ganti_password(client, dokter_token):
 
     # ganti password benar -> bisa login dengan password baru
     assert client.post("/api/auth/me/password", headers=h,
-                       json={"old_password": "dokter123", "new_password": "dokterBaru1"}).status_code == 200
-    r = client.post("/api/auth/login", json={"username": "dokter", "password": "dokterBaru1"})
+                       json={"old_password": "123456", "new_password": "dokterBaru1"}).status_code == 200
+    r = client.post("/api/auth/login", json={"username": "wigadana", "password": "dokterBaru1"})
     assert r.status_code == 200
 
     # kembalikan password biar test lain tidak terganggu
     h2 = auth(r.json()["access_token"])
     client.post("/api/auth/me/password", headers=h2,
-                json={"old_password": "dokterBaru1", "new_password": "dokter123"})
+                json={"old_password": "dokterBaru1", "new_password": "123456"})
 
 
 # ===== Fitur 4: statistik =====

@@ -10,7 +10,7 @@ def test_health(client):
 
 
 def test_login_gagal(client):
-    r = client.post("/api/auth/login", json={"username": "dokter", "password": "salah"})
+    r = client.post("/api/auth/login", json={"username": "wigadana", "password": "salah"})
     assert r.status_code == 401
 
 

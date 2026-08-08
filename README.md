@@ -94,8 +94,8 @@ npm run dev
 
 | username | password | role |
 |----------|----------|------|
-| admin | admin123 | admin |
-| dokter | dokter123 | dokter |
+| admin | 123456 | admin |
+| wigadana | 123456 | dokter |
 
 ## Deploy ke VPS (Backend + DB + Redis)
 
