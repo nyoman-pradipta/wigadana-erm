@@ -83,7 +83,7 @@ def test_pemeriksaan_selesai_dan_riwayat(client, dokter_token):
         json={"anamnesa": "Pusing", "tb": 160, "bb": 55},
     ).json()
     assert draft["status"] == "diperiksa"
-    assert draft["doctor"]["nama"] == "Dr. Andini"
+    assert draft["doctor"]["nama"] == "Dr. Wiga"
 
     # lengkap -> selesai + tgl default hari ini
     done = client.put(
@@ -92,13 +92,13 @@ def test_pemeriksaan_selesai_dan_riwayat(client, dokter_token):
               "diagnosa": "Faringitis akut", "terapi": "Amoxicillin 500mg 3x1"},
     ).json()
     assert done["status"] == "selesai"
-    assert done["doctor"]["nama"] == "Dr. Andini"
+    assert done["doctor"]["nama"] == "Dr. Wiga"
 
     # riwayat pasien berisi pemeriksaan + dokter penanganan
     riwayat = client.get(f"/api/visits/riwayat/{p['id']}", headers=hd).json()
     assert len(riwayat) == 1
     assert riwayat[0]["diagnosa"] == "Faringitis akut"
-    assert riwayat[0]["doctor"]["nama"] == "Dr. Andini"
+    assert riwayat[0]["doctor"]["nama"] == "Dr. Wiga"
 
     # sudah selesai -> tidak tampil di antrian aktif
     lst = client.get("/api/antrian", headers=h).json()

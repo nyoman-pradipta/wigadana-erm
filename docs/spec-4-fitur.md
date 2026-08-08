@@ -130,7 +130,7 @@ Generator PDF taruh di modul baru `backend/app/pdf.py` (fungsi murni `build_reka
   "total_kunjungan": 1523,
   "kunjungan_7_hari": [{"tanggal": "2026-07-29", "jumlah": 42}, ...],
   "diagnosa_terbanyak": [{"diagnosa": "ISPA", "jumlah": 88}, ...],
-  "dokter_teraktif": [{"nama": "Dr. Andini", "jumlah": 210}, ...]
+  "dokter_teraktif": [{"nama": "Dr. Wiga", "jumlah": 210}, ...]
 }
 ```
 

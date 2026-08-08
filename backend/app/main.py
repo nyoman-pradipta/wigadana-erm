@@ -29,7 +29,7 @@ def _seed_default_users() -> None:
         }
         defaults = [
             ("admin", "Administrator", "admin"),
-            ("wigadana", "Dr. Andini", "dokter"),
+            ("wigadana", "Dr. Wiga", "dokter"),
         ]
         created = []
         for username, nama, role in defaults:
