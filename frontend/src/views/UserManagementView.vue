@@ -10,8 +10,8 @@
 
     <div class="card">
       <div class="search-row">
-        <input v-model="q" placeholder="Cari nama / username..." @keyup.enter="muat" />
-        <select v-model="filterRole" style="padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px" @change="muat">
+        <input v-model="q" placeholder="Cari nama / username..." @keyup.enter="cari" />
+        <select v-model="filterRole" style="padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px" @change="cari">
           <option value="">Semua role</option>
           <option value="admin">admin</option>
           <option value="dokter">dokter</option>
@@ -53,6 +53,7 @@
         </tbody>
       </table>
       <div v-else class="empty">Tidak ada pengguna</div>
+      <Pagination :page="page" :total-pages="totalPages" :total="total" @update:page="onPageChange" />
     </div>
 
     <!-- Modal: user baru -->
@@ -142,12 +143,16 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import api, { apiErrorMessage } from '../api/client'
+import Pagination from '../components/Pagination.vue'
 
 const users = ref([])
 const q = ref('')
 const filterRole = ref('')
 const error = ref('')
 const success = ref('')
+const page = ref(1)
+const totalPages = ref(1)
+const total = ref(0)
 
 const showCreate = ref(false)
 const showReset = ref(false)
@@ -161,11 +166,23 @@ const editForm = ref({ username: '', nama: '', no_sip: '', role: 'dokter', passw
 
 async function muat() {
   try {
-    const { data } = await api.get('/users', { params: { q: q.value, role: filterRole.value } })
-    users.value = data
+    const { data } = await api.get('/users', { params: { q: q.value, role: filterRole.value, page: page.value } })
+    users.value = data.items
+    totalPages.value = data.total_pages
+    total.value = data.total
   } catch (err) {
     error.value = apiErrorMessage(err, 'Gagal memuat pengguna')
   }
+}
+
+function cari() {
+  page.value = 1
+  muat()
+}
+
+function onPageChange(p) {
+  page.value = p
+  muat()
 }
 
 function openCreate() {

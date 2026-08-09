@@ -59,7 +59,7 @@
 
     <!-- Daftar antrian aktif -->
     <div class="card">
-      <h2>Daftar Antrian ({{ antrian.length }})</h2>
+      <h2>Daftar Antrian ({{ total }})</h2>
       <table v-if="antrian.length">
         <thead>
           <tr>
@@ -111,6 +111,7 @@
         </tbody>
       </table>
       <div v-else class="empty">Tidak ada antrian aktif</div>
+      <Pagination :page="page" :total-pages="totalPages" :total="total" @update:page="onPageChange" />
     </div>
   </div>
 </template>
@@ -119,6 +120,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import api, { apiErrorMessage } from '../api/client'
 import { useAuthStore } from '../stores/auth'
+import Pagination from '../components/Pagination.vue'
 
 const auth = useAuthStore()
 const antrian = ref([])
@@ -129,6 +131,9 @@ const selectedPatientId = ref(null)
 const loadingDaftar = ref(false)
 const daftarMsg = ref('')
 const daftarErr = ref('')
+const page = ref(1)
+const totalPages = ref(1)
+const total = ref(0)
 
 const canDaftar = computed(() => ['admin', 'dokter'].includes(auth.role))
 const canPanggil = computed(() => ['admin', 'dokter'].includes(auth.role))
@@ -154,21 +159,28 @@ let timer = null
 async function muatAntrian() {
   try {
     const [listRes, kiniRes] = await Promise.all([
-      api.get('/antrian'),
+      api.get('/antrian', { params: { page: page.value } }),
       api.get('/antrian/saat-ini'),
     ])
-    antrian.value = listRes.data
+    antrian.value = listRes.data.items
+    totalPages.value = listRes.data.total_pages
+    total.value = listRes.data.total
     saatIni.value = kiniRes.data
   } catch (err) {
     daftarErr.value = apiErrorMessage(err, 'Gagal memuat antrian')
   }
 }
 
+function onPageChange(p) {
+  page.value = p
+  muatAntrian()
+}
+
 async function cariPasien() {
   if (!cari.value.trim()) { hasilCari.value = []; return }
   try {
-    const { data } = await api.get('/patients', { params: { q: cari.value } })
-    hasilCari.value = data
+    const { data } = await api.get('/patients', { params: { q: cari.value, per_page: 20 } })
+    hasilCari.value = data.items
   } catch (err) {
     daftarErr.value = apiErrorMessage(err)
   }

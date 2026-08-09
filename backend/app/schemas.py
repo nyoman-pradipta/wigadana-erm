@@ -155,3 +155,27 @@ class AntrianOut(BaseModel):
     visit: VisitOut
     patient: PatientOut
     doctor: UserOut | None = None
+
+
+# ===== Pagination (dipakai list antrian, pasien, pengguna, riwayat — 10/halaman) =====
+class PageMeta(BaseModel):
+    page: int
+    per_page: int
+    total: int
+    total_pages: int
+
+
+class PatientPage(PageMeta):
+    items: list[PatientOut]
+
+
+class UserPage(PageMeta):
+    items: list[UserOut]
+
+
+class AntrianPage(PageMeta):
+    items: list[AntrianOut]
+
+
+class VisitPage(PageMeta):
+    items: list[VisitOut]

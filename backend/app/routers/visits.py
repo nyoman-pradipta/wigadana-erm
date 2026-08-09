@@ -1,14 +1,15 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session, joinedload
 
 from ..database import get_db
 from ..deps import get_current_user, require_roles
 from ..models import User, Visit
+from ..pagination import page_params, paginate
 from ..pdf import build_rekam_medis_pdf, build_resep_pdf, build_surat_sakit_pdf
 from ..redis_client import cache_delete, cache_delete_prefix, cache_get, cache_set
-from ..schemas import PemeriksaanUpdate, VisitOut
+from ..schemas import PemeriksaanUpdate, VisitOut, VisitPage
 
 router = APIRouter(prefix="/visits", tags=["pemeriksaan"])
 
@@ -23,30 +24,38 @@ def _riwayat_cache_key(patient_id: int) -> str:
     return f"riwayat:{patient_id}"
 
 
-@router.get("/riwayat/{patient_id}", response_model=list[VisitOut])
+@router.get("/riwayat/{patient_id}", response_model=VisitPage)
 def riwayat_pasien(
     patient_id: int,
+    page_pp: tuple[int, int] = Depends(page_params),
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
-    """Riwayat pemeriksaan pasien (cache Redis 60 detik, invalidate saat ada update)."""
+    """Riwayat pemeriksaan pasien, paginasi 10/halaman (list lengkap di-cache
+    Redis 60 detik, invalidate saat ada update, lalu di-slice per halaman)."""
+    page, per_page = page_pp
     cache_key = _riwayat_cache_key(patient_id)
     cached = cache_get(cache_key)
     if cached is not None:
-        return cached
-
-    visits = (
-        _visit_query(db)
-        .filter(
-            Visit.patient_id == patient_id,
-            Visit.status == "selesai",
+        data = cached
+    else:
+        visits = (
+            _visit_query(db)
+            .filter(
+                Visit.patient_id == patient_id,
+                Visit.status == "selesai",
+            )
+            .order_by(Visit.tgl_pemeriksaan.desc(), Visit.id.desc())
+            .all()
         )
-        .order_by(Visit.tgl_pemeriksaan.desc(), Visit.id.desc())
-        .all()
-    )
-    data = [VisitOut.model_validate(v).model_dump(mode="json") for v in visits]
-    cache_set(cache_key, data, ttl=60)
-    return data
+        data = [VisitOut.model_validate(v).model_dump(mode="json") for v in visits]
+        cache_set(cache_key, data, ttl=60)
+
+    total = len(data)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    start = (page - 1) * per_page
+    items = data[start : start + per_page]
+    return {"items": items, "page": page, "per_page": per_page, "total": total, "total_pages": total_pages}
 
 
 @router.get("/{visit_id}/pdf/rekam-medis")

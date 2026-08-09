@@ -7,13 +7,14 @@ from sqlalchemy.orm import Session, joinedload
 from ..database import get_db
 from ..deps import get_current_user, require_roles
 from ..models import Patient, User, Visit
+from ..pagination import page_params, paginate
 from ..redis_client import (
     cache_delete_prefix,
     cache_get,
     cache_set,
     next_antrian_counter,
 )
-from ..schemas import AntrianOut, PatientOut, UserOut, VisitCreate, VisitOut
+from ..schemas import AntrianOut, AntrianPage, PatientOut, UserOut, VisitCreate, VisitOut
 
 router = APIRouter(prefix="/antrian", tags=["antrian"])
 
@@ -92,28 +93,36 @@ def daftar_antrian(
     return visit
 
 
-@router.get("", response_model=list[AntrianOut])
+@router.get("", response_model=AntrianPage)
 def list_antrian(
     status: str = Query("aktif", description="aktif | menunggu | dipanggil | diperiksa | selesai"),
+    page_pp: tuple[int, int] = Depends(page_params),
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
-    """Daftar antrian. Default: semua yang belum selesai (cache Redis 30 detik)."""
+    """Daftar antrian (paginasi 10/halaman). Default: semua yang belum selesai
+    (list lengkap di-cache Redis 30 detik, lalu di-slice per halaman)."""
+    page, per_page = page_pp
     cache_key = f"{CACHE_PREFIX}list:{status}"
     cached = cache_get(cache_key)
     if cached is not None:
-        return cached
-
-    query = _visit_query(db)
-    if status == "aktif":
-        query = query.filter(Visit.status.in_(_ACTIVE_STATUS))
+        data = cached
     else:
-        query = query.filter(Visit.status == status)
+        query = _visit_query(db)
+        if status == "aktif":
+            query = query.filter(Visit.status.in_(_ACTIVE_STATUS))
+        else:
+            query = query.filter(Visit.status == status)
 
-    visits = query.order_by(Visit.antrian_no.asc()).all()
-    data = _serialize(visits)
-    cache_set(cache_key, data, ttl=30)
-    return data
+        visits = query.order_by(Visit.antrian_no.asc()).all()
+        data = _serialize(visits)
+        cache_set(cache_key, data, ttl=30)
+
+    total = len(data)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    start = (page - 1) * per_page
+    items = data[start : start + per_page]
+    return {"items": items, "page": page, "per_page": per_page, "total": total, "total_pages": total_pages}
 
 
 @router.get("/saat-ini", response_model=AntrianOut | None)

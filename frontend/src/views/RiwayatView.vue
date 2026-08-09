@@ -29,7 +29,7 @@
     </div>
 
     <div class="card">
-      <h2>Riwayat Pemeriksaan ({{ riwayat.length }})</h2>
+      <h2>Riwayat Pemeriksaan ({{ total }})</h2>
 
       <table v-if="riwayat.length">
         <thead>
@@ -82,6 +82,7 @@
         </tbody>
       </table>
       <div v-else class="empty">Belum ada riwayat pemeriksaan</div>
+      <Pagination :page="page" :total-pages="totalPages" :total="total" @update:page="onPageChange" />
     </div>
   </div>
 </template>
@@ -91,12 +92,16 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import api, { apiErrorMessage, openPdf } from '../api/client'
 import { useAuthStore } from '../stores/auth'
+import Pagination from '../components/Pagination.vue'
 
 const route = useRoute()
 const auth = useAuthStore()
 const pasien = ref(null)
 const riwayat = ref([])
 const expanded = ref(null)
+const page = ref(1)
+const totalPages = ref(1)
+const total = ref(0)
 
 const canTambah = computed(() => ['admin', 'dokter'].includes(auth.role))
 const canDaftar = computed(() => ['admin', 'dokter'].includes(auth.role))
@@ -133,21 +138,32 @@ async function hapusRiwayat(v) {
   if (!confirm(`Hapus riwayat pemeriksaan tanggal ${v.tgl_pemeriksaan || '-'} secara permanen? Tindakan ini tidak bisa dibatalkan.`)) return
   try {
     await api.delete(`/visits/${v.id}`)
-    riwayat.value = riwayat.value.filter((x) => x.id !== v.id)
     if (expanded.value === v.id) expanded.value = null
+    await muatRiwayat()
   } catch (err) {
     alert(apiErrorMessage(err, 'Gagal menghapus riwayat'))
   }
 }
 
+function onPageChange(p) {
+  page.value = p
+  muatRiwayat()
+}
+
+async function muatRiwayat() {
+  const { data } = await api.get(`/visits/riwayat/${route.params.id}`, { params: { page: page.value } })
+  riwayat.value = data.items
+  totalPages.value = data.total_pages
+  total.value = data.total
+}
+
 onMounted(async () => {
   try {
-    const [pRes, rRes] = await Promise.all([
+    const [pRes] = await Promise.all([
       api.get(`/patients/${route.params.id}`),
-      api.get(`/visits/riwayat/${route.params.id}`),
+      muatRiwayat(),
     ])
     pasien.value = pRes.data
-    riwayat.value = rRes.data
   } catch (err) {
     alert(apiErrorMessage(err, 'Gagal memuat data'))
   }

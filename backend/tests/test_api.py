@@ -57,7 +57,7 @@ def test_alur_pasien_dan_antrian(client, dokter_token):
     assert client.post("/api/antrian", headers=h, json={"patient_id": p1["id"]}).status_code == 409
 
     # list antrian
-    lst = client.get("/api/antrian", headers=h).json()
+    lst = client.get("/api/antrian", headers=h).json()["items"]
     assert [(x["visit"]["antrian_no"], x["patient"]["nama"]) for x in lst] == [
         (1, "Budi Santoso"), (2, "Siti Aminah")
     ]
@@ -95,13 +95,13 @@ def test_pemeriksaan_selesai_dan_riwayat(client, dokter_token):
     assert done["doctor"]["nama"] == "Dr. Wiga"
 
     # riwayat pasien berisi pemeriksaan + dokter penanganan
-    riwayat = client.get(f"/api/visits/riwayat/{p['id']}", headers=hd).json()
+    riwayat = client.get(f"/api/visits/riwayat/{p['id']}", headers=hd).json()["items"]
     assert len(riwayat) == 1
     assert riwayat[0]["diagnosa"] == "Faringitis akut"
     assert riwayat[0]["doctor"]["nama"] == "Dr. Wiga"
 
     # sudah selesai -> tidak tampil di antrian aktif
-    lst = client.get("/api/antrian", headers=h).json()
+    lst = client.get("/api/antrian", headers=h).json()["items"]
     assert all(x["visit"]["id"] != v["id"] for x in lst)
 
 
@@ -128,7 +128,7 @@ def test_batal_dan_panggil_ulang_antrian(client, dokter_token):
     assert r.status_code == 200
     assert r.json()["status"] == "batal"
     # antrian batal tidak muncul di daftar aktif
-    lst = client.get("/api/antrian", headers=h).json()
+    lst = client.get("/api/antrian", headers=h).json()["items"]
     assert all(x["visit"]["id"] != vid for x in lst)
 
     # panggil ulang dari 'diperiksa' (draft ditinggalkan dokter)

@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..deps import get_current_user, require_roles
 from ..models import Patient, User, Visit
-from ..schemas import PatientCreate, PatientOut, PatientUpdate
+from ..pagination import page_params, paginate
+from ..schemas import PatientCreate, PatientOut, PatientPage, PatientUpdate
 
 router = APIRouter(prefix="/patients", tags=["pasien"])
 
@@ -25,22 +26,23 @@ def _generate_no_rm(db: Session) -> str:
     return f"RM-{num:06d}"
 
 
-@router.get("", response_model=list[PatientOut])
+@router.get("", response_model=PatientPage)
 def list_patients(
     q: str = Query("", description="Cari nama atau nomor RM"),
-    limit: int = Query(50, le=200),
+    page_pp: tuple[int, int] = Depends(page_params),
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),  # wajib login — data pasien sensitif
 ):
+    page, per_page = page_pp
     query = db.query(Patient)
     if q.strip():
         like = f"%{q.strip()}%"
         query = query.filter(
             or_(Patient.nama.ilike(like), Patient.no_rm.ilike(like))
         )
-    return (
-        query.order_by(Patient.created_at.desc(), Patient.id.desc()).limit(limit).all()
-    )
+    query = query.order_by(Patient.created_at.desc(), Patient.id.desc())
+    items, total, total_pages = paginate(query, page, per_page)
+    return {"items": items, "page": page, "per_page": per_page, "total": total, "total_pages": total_pages}
 
 
 @router.post("", response_model=PatientOut, status_code=201)

@@ -7,8 +7,8 @@
 
     <div class="card">
       <div class="search-row">
-        <input v-model="q" placeholder="Cari nama atau nomor RM..." @keyup.enter="muat" />
-        <button class="btn secondary" @click="muat">Cari</button>
+        <input v-model="q" placeholder="Cari nama atau nomor RM..." @keyup.enter="cari" />
+        <button class="btn secondary" @click="cari">Cari</button>
       </div>
 
       <table v-if="pasien.length">
@@ -45,6 +45,7 @@
         </tbody>
       </table>
       <div v-else class="empty">Belum ada data pasien</div>
+      <Pagination :page="page" :total-pages="totalPages" :total="total" @update:page="onPageChange" />
     </div>
   </div>
 </template>
@@ -53,10 +54,14 @@
 import { computed, onMounted, ref } from 'vue'
 import api, { apiErrorMessage } from '../api/client'
 import { useAuthStore } from '../stores/auth'
+import Pagination from '../components/Pagination.vue'
 
 const auth = useAuthStore()
 const pasien = ref([])
 const q = ref('')
+const page = ref(1)
+const totalPages = ref(1)
+const total = ref(0)
 
 const canTambah = computed(() => ['admin', 'dokter'].includes(auth.role))
 const canDaftar = computed(() => ['admin', 'dokter'].includes(auth.role))
@@ -64,11 +69,23 @@ const canHapus = computed(() => auth.role === 'admin')
 
 async function muat() {
   try {
-    const { data } = await api.get('/patients', { params: { q: q.value } })
-    pasien.value = data
+    const { data } = await api.get('/patients', { params: { q: q.value, page: page.value } })
+    pasien.value = data.items
+    totalPages.value = data.total_pages
+    total.value = data.total
   } catch (err) {
     alert(apiErrorMessage(err, 'Gagal memuat pasien'))
   }
+}
+
+function cari() {
+  page.value = 1
+  muat()
+}
+
+function onPageChange(p) {
+  page.value = p
+  muat()
 }
 
 async function daftarAntrian(p) {

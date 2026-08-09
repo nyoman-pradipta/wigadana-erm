@@ -5,11 +5,13 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..deps import require_roles
 from ..models import User, Visit
+from ..pagination import page_params, paginate
 from ..schemas import (
     PasswordResetRequest,
     UserAdminUpdate,
     UserCreate,
     UserOut,
+    UserPage,
 )
 from ..security import hash_password
 
@@ -19,13 +21,15 @@ router = APIRouter(prefix="/users", tags=["users"])
 # admin tidak boleh dihapus permanen — pakai is_active toggle (soft delete) untuk admin.
 
 
-@router.get("", response_model=list[UserOut])
+@router.get("", response_model=UserPage)
 def list_users(
     q: str = Query(""),
     role: str = Query(""),
+    page_pp: tuple[int, int] = Depends(page_params),
     db: Session = Depends(get_db),
     _: User = Depends(require_roles("admin")),
 ):
+    page, per_page = page_pp
     query = db.query(User)
     if q.strip():
         like = f"%{q.strip()}%"
@@ -34,7 +38,9 @@ def list_users(
         )
     if role.strip():
         query = query.filter(User.role == role.strip())
-    return query.order_by(User.created_at.asc(), User.id.asc()).all()
+    query = query.order_by(User.created_at.asc(), User.id.asc())
+    items, total, total_pages = paginate(query, page, per_page)
+    return {"items": items, "page": page, "per_page": per_page, "total": total, "total_pages": total_pages}
 
 
 @router.post("", response_model=UserOut, status_code=201)

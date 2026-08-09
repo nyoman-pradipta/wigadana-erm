@@ -36,14 +36,14 @@ def test_admin_kelola_user(client, dokter_token):
     # token lama user yang dinonaktifkan -> 401 juga
     t = client.post("/api/auth/login", json={"username": "wigadana", "password": "123456"}).json()["access_token"]
     # nonaktifkan dokter oleh admin
-    dokter_id = client.get("/api/users", headers=ha, params={"q": "wigadana"}).json()[0]["id"]
+    dokter_id = client.get("/api/users", headers=ha, params={"q": "wigadana"}).json()["items"][0]["id"]
     client.put(f"/api/users/{dokter_id}", headers=ha, json={"is_active": False})
     assert client.get("/api/antrian", headers=auth(t)).status_code == 401
     # aktifkan lagi
     client.put(f"/api/users/{dokter_id}", headers=ha, json={"is_active": True})
 
     # admin tidak bisa nonaktifkan diri sendiri
-    admin_id = client.get("/api/users", headers=ha, params={"q": "admin"}).json()[0]["id"]
+    admin_id = client.get("/api/users", headers=ha, params={"q": "admin"}).json()["items"][0]["id"]
     assert client.put(f"/api/users/{admin_id}", headers=ha, json={"is_active": False}).status_code == 400
 
     # reset password
@@ -152,11 +152,11 @@ def test_delete_user_hanya_admin_dan_target_dokter(client, dokter_token):
     assert client.delete(f"/api/users/{new_id}", headers=ha).status_code == 404  # sudah hilang
 
     # admin tidak bisa hapus akun admin lain (apalagi diri sendiri)
-    admin_id = client.get("/api/users", headers=ha, params={"q": "admin"}).json()[0]["id"]
+    admin_id = client.get("/api/users", headers=ha, params={"q": "admin"}).json()["items"][0]["id"]
     assert client.delete(f"/api/users/{admin_id}", headers=ha).status_code == 403
 
     # dokter yang PUNYA riwayat visit -> tidak bisa dihapus (409)
-    dokter_id = client.get("/api/users", headers=ha, params={"q": "wigadana"}).json()[0]["id"]
+    dokter_id = client.get("/api/users", headers=ha, params={"q": "wigadana"}).json()["items"][0]["id"]
     assert client.delete(f"/api/users/{dokter_id}", headers=ha).status_code == 409
 
 
@@ -367,7 +367,8 @@ def test_hapus_riwayat_admin_only(client, dokter_token):
 
     # riwayat masih muncul sebelum dihapus
     r = client.get(f"/api/visits/riwayat/{p['id']}", headers=h)
-    assert len(r.json()) == 1
+    assert r.json()["total"] == 1
+    assert len(r.json()["items"]) == 1
 
     # admin boleh hapus
     assert client.delete(f"/api/visits/{v['id']}", headers=ha).status_code == 204
@@ -376,4 +377,74 @@ def test_hapus_riwayat_admin_only(client, dokter_token):
 
     # riwayat pasien sudah kosong (cache ter-invalidate)
     r = client.get(f"/api/visits/riwayat/{p['id']}", headers=h)
-    assert len(r.json()) == 0
+    assert r.json()["total"] == 0
+
+
+# ===== Fitur baru: pagination 10/halaman (antrian, pasien, pengguna, riwayat) =====
+def test_pagination_pasien(client, dokter_token):
+    h = auth(dokter_token)
+    for i in range(15):
+        client.post("/api/patients", headers=h, json={"nama": f"Pasien Page {i}"})
+
+    r1 = client.get("/api/patients", headers=h, params={"q": "Pasien Page", "page": 1}).json()
+    assert r1["page"] == 1 and r1["per_page"] == 10
+    assert len(r1["items"]) == 10
+    assert r1["total"] >= 15
+    assert r1["total_pages"] >= 2
+
+    r2 = client.get("/api/patients", headers=h, params={"q": "Pasien Page", "page": 2}).json()
+    assert len(r2["items"]) >= 5
+    # tidak ada overlap id antar halaman
+    ids1 = {x["id"] for x in r1["items"]}
+    ids2 = {x["id"] for x in r2["items"]}
+    assert ids1.isdisjoint(ids2)
+
+
+def test_pagination_users(client, dokter_token):
+    ha = auth(login_admin(client))
+    for i in range(12):
+        client.post("/api/users", headers=ha, json={
+            "username": f"dr.page{i}", "password": "rahasia123", "nama": f"Dr Page {i}", "role": "dokter",
+        })
+
+    r = client.get("/api/users", headers=ha, params={"q": "Dr Page", "page": 1}).json()
+    assert r["per_page"] == 10
+    assert len(r["items"]) == 10
+    assert r["total"] == 12
+    assert r["total_pages"] == 2
+
+    r2 = client.get("/api/users", headers=ha, params={"q": "Dr Page", "page": 2}).json()
+    assert len(r2["items"]) == 2
+
+
+def test_pagination_antrian(client, dokter_token):
+    h = auth(dokter_token)
+    for i in range(11):
+        p = client.post("/api/patients", headers=h, json={"nama": f"Antri Page {i}"}).json()
+        client.post("/api/antrian", headers=h, json={"patient_id": p["id"]})
+
+    r = client.get("/api/antrian", headers=h, params={"page": 1}).json()
+    assert r["per_page"] == 10
+    assert len(r["items"]) == 10
+    assert r["total"] >= 11
+    assert r["total_pages"] >= 2
+
+
+def test_pagination_riwayat(client, dokter_token):
+    h = auth(dokter_token)
+    hd = auth(dokter_token)
+    p = client.post("/api/patients", headers=h, json={"nama": "Pasien Riwayat Banyak"}).json()
+
+    for i in range(11):
+        v = client.post("/api/antrian", headers=h, json={"patient_id": p["id"]}).json()
+        client.post(f"/api/antrian/{v['id']}/panggil", headers=h)
+        client.put(f"/api/visits/{v['id']}", headers=hd, json={"anamnesa": f"Kunjungan {i}", "diagnosa": "X", "terapi": "Y"})
+
+    r = client.get(f"/api/visits/riwayat/{p['id']}", headers=h, params={"page": 1}).json()
+    assert r["per_page"] == 10
+    assert len(r["items"]) == 10
+    assert r["total"] == 11
+    assert r["total_pages"] == 2
+
+    r2 = client.get(f"/api/visits/riwayat/{p['id']}", headers=h, params={"page": 2}).json()
+    assert len(r2["items"]) == 1
